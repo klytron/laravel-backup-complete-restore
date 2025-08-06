@@ -205,31 +205,19 @@ class BackupCompleteRestoreCommand extends Command
         
         // Check if backup requires password
         $password = env('BACKUP_ARCHIVE_PASSWORD');
-        $this->info('🔍 Checking for backup password...');
-        $this->info('🔍 env() method result: ' . ($password ? 'FOUND' : 'NOT FOUND'));
-        
         if (!$password) {
             // Try alternative methods to get the password
             $password = config('backup.backup.password');
-            $this->info('🔍 config() method result: ' . ($password ? 'FOUND' : 'NOT FOUND'));
         }
         if (!$password) {
             // Try reading directly from .env file
             $envPath = base_path('.env');
-            $this->info('🔍 Checking .env file at: ' . $envPath);
-            $this->info('🔍 .env file exists: ' . (file_exists($envPath) ? 'YES' : 'NO'));
-            
             if (file_exists($envPath)) {
                 $envContent = file_get_contents($envPath);
-                $this->info('🔍 .env file size: ' . strlen($envContent) . ' bytes');
-                
                 if (preg_match('/BACKUP_ARCHIVE_PASSWORD=(.+)/', $envContent, $matches)) {
                     $password = trim($matches[1]);
                     // Remove quotes if present
                     $password = trim($password, '"\'');
-                    $this->info('🔍 Found password in .env file: ' . (strlen($password) > 0 ? 'YES (' . strlen($password) . ' chars)' : 'NO'));
-                } else {
-                    $this->info('🔍 No BACKUP_ARCHIVE_PASSWORD found in .env file');
                 }
             }
         }
@@ -299,31 +287,19 @@ class BackupCompleteRestoreCommand extends Command
             
             // Check if backup requires password
             $password = env('BACKUP_ARCHIVE_PASSWORD');
-            $this->info('🔍 Checking for backup password...');
-            $this->info('🔍 env() method result: ' . ($password ? 'FOUND' : 'NOT FOUND'));
-            
             if (!$password) {
                 // Try alternative methods to get the password
                 $password = config('backup.backup.password');
-                $this->info('🔍 config() method result: ' . ($password ? 'FOUND' : 'NOT FOUND'));
             }
             if (!$password) {
                 // Try reading directly from .env file
                 $envPath = base_path('.env');
-                $this->info('🔍 Checking .env file at: ' . $envPath);
-                $this->info('🔍 .env file exists: ' . (file_exists($envPath) ? 'YES' : 'NO'));
-                
                 if (file_exists($envPath)) {
                     $envContent = file_get_contents($envPath);
-                    $this->info('🔍 .env file size: ' . strlen($envContent) . ' bytes');
-                    
                     if (preg_match('/BACKUP_ARCHIVE_PASSWORD=(.+)/', $envContent, $matches)) {
                         $password = trim($matches[1]);
                         // Remove quotes if present
                         $password = trim($password, '"\'');
-                        $this->info('🔍 Found password in .env file: ' . (strlen($password) > 0 ? 'YES (' . strlen($password) . ' chars)' : 'NO'));
-                    } else {
-                        $this->info('🔍 No BACKUP_ARCHIVE_PASSWORD found in .env file');
                     }
                 }
             }
