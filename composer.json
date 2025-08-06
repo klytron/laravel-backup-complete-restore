@@ -58,7 +58,7 @@
     }
   },
   "minimum-stability": "stable",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "prefer-stable": true,
   "config": {
     "sort-packages": true
