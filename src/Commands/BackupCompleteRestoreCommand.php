@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use ZipArchive;
 use Exception;
 
@@ -75,15 +76,20 @@ class BackupCompleteRestoreCommand extends Command
 
             $success = true;
 
-            // Restore database first
-            if (!$filesOnly) {
+            // Check if this backup contains database dumps
+            $hasDatabase = $this->backupContainsDatabase($disk, $backupFile);
+            
+            // Restore database first (if backup contains database and not files-only)
+            if (!$filesOnly && $hasDatabase) {
                 $this->info('🗄️  Restoring database...');
                 if (!$this->restoreDatabase($disk, $backupFile)) {
                     $success = false;
                 }
+            } elseif (!$filesOnly && !$hasDatabase) {
+                $this->info('ℹ️  No database found in backup (files-only backup)');
             }
 
-            // Restore files
+            // Restore files (if not database-only)
             if (!$databaseOnly && $success) {
                 $this->info('📁 Restoring files...');
                 
@@ -135,11 +141,28 @@ class BackupCompleteRestoreCommand extends Command
         $backupPath = $backupName;
 
         if ($backup) {
-            // Specific backup file
-            $path = "{$backupPath}/{$backup}";
+            // Specific backup file - check if it's already a full path or just filename
+            if (str_contains($backup, '/')) {
+                // Full path provided
+                $path = $backup;
+            } else {
+                // Just filename, construct path in backup directory
+                $path = "{$backupPath}/{$backup}";
+            }
+            
             if (Storage::disk($disk)->exists($path)) {
                 return $path;
             }
+            
+            // If not found, try looking for the file directly in the backup directory
+            // This handles cases where the backup name might be different
+            $files = Storage::disk($disk)->files($backupPath);
+            foreach ($files as $file) {
+                if (basename($file) === $backup) {
+                    return $file;
+                }
+            }
+            
             return null;
         }
 
@@ -193,42 +216,85 @@ class BackupCompleteRestoreCommand extends Command
     private function restoreDatabase($disk, $backupFile)
     {
         try {
-            // Use the existing backup:restore command which handles database restoration properly
-            $arguments = [
-                '--disk' => $disk,
-                '--backup' => basename($backupFile),
-                '--connection' => $this->option('connection'),
-            ];
-
-            if ($this->option('reset')) {
-                $arguments['--reset'] = true;
-                $this->warn('🗑️  All existing tables will be dropped first');
+            $this->info('📥 Downloading backup file...');
+            
+            // Download the backup file to a temporary location
+            $tempDir = storage_path('app/temp-restore-' . time());
+            File::makeDirectory($tempDir, 0755, true);
+            
+            $localBackupPath = $tempDir . '/backup.zip';
+            $this->info('⏳ Downloading from ' . $disk . ' disk...');
+            
+            // Download with progress indicator
+            $backupContent = Storage::disk($disk)->get($backupFile);
+            if (!$backupContent) {
+                $this->error('❌ Failed to download backup file from ' . $disk . ' disk');
+                File::deleteDirectory($tempDir);
+                return false;
             }
-
+            
+            File::put($localBackupPath, $backupContent);
+            $this->info('✅ Backup file downloaded successfully (' . $this->formatBytes(strlen($backupContent)) . ')');
+            
+            // Extract the backup
+            $this->info('📦 Extracting backup archive...');
+            $extractDir = $tempDir . '/extracted';
+            File::makeDirectory($extractDir, 0755, true);
+            
+            $zip = new ZipArchive;
+            if ($zip->open($localBackupPath) !== TRUE) {
+                $this->error('❌ Failed to open backup ZIP file');
+                File::deleteDirectory($tempDir);
+                return false;
+            }
+            
             // Check if backup requires password
             $password = env('BACKUP_ARCHIVE_PASSWORD');
             if ($password) {
-                $arguments['--password'] = $password;
+                $zip->setPassword($password);
                 $this->info('🔐 Using configured backup password');
             }
-
-            $this->info('🚀 Starting database restore...');
             
-            $exitCode = Artisan::call('backup:restore', $arguments);
-
-            if ($exitCode === 0) {
+            $zip->extractTo($extractDir);
+            $zip->close();
+            $this->info('✅ Backup extracted successfully');
+            
+            // Find the database dump file
+            $dbFiles = File::glob($extractDir . '/**/*.sql');
+            if (empty($dbFiles)) {
+                $this->error('❌ No SQL dump file found in backup');
+                File::deleteDirectory($tempDir);
+                return false;
+            }
+            
+            $dbFile = $dbFiles[0];
+            $this->info('🗄️  Found database dump: ' . basename($dbFile));
+            
+            // Reset database if requested
+            if ($this->option('reset')) {
+                $this->warn('🗑️  Dropping all existing tables...');
+                $this->dropAllTables();
+            }
+            
+            // Restore the database
+            $this->info('🚀 Restoring database from dump...');
+            $connection = $this->option('connection') ?: config('database.default');
+            
+            if ($this->importDatabaseDump($dbFile, $connection)) {
                 $this->info('✅ Database restored successfully');
+                File::deleteDirectory($tempDir);
                 return true;
             } else {
                 $this->error('❌ Database restore failed');
-                $output = Artisan::output();
-                if ($output) {
-                    $this->line($output);
-                }
+                File::deleteDirectory($tempDir);
                 return false;
             }
+            
         } catch (Exception $e) {
             $this->error('❌ Database restore error: ' . $e->getMessage());
+            if (isset($tempDir) && File::exists($tempDir)) {
+                File::deleteDirectory($tempDir);
+            }
             return false;
         }
     }
@@ -477,5 +543,146 @@ class BackupCompleteRestoreCommand extends Command
         }
 
         return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    private function dropAllTables()
+    {
+        try {
+            $connection = $this->option('connection') ?: config('database.default');
+            $db = DB::connection($connection);
+            
+            // Get all table names
+            $tables = $db->select('SHOW TABLES');
+            $tableNames = array_map(function($table) {
+                return array_values((array) $table)[0];
+            }, $tables);
+            
+            if (empty($tableNames)) {
+                $this->info('ℹ️  No tables to drop');
+                return true;
+            }
+            
+            // Disable foreign key checks
+            $db->statement('SET FOREIGN_KEY_CHECKS = 0');
+            
+            foreach ($tableNames as $table) {
+                $this->line("🗑️  Dropping table: {$table}");
+                $db->statement("DROP TABLE IF EXISTS `{$table}`");
+            }
+            
+            // Re-enable foreign key checks
+            $db->statement('SET FOREIGN_KEY_CHECKS = 1');
+            
+            $this->info('✅ All tables dropped successfully');
+            return true;
+            
+        } catch (Exception $e) {
+            $this->error('❌ Failed to drop tables: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function backupContainsDatabase($disk, $backupFile)
+    {
+        try {
+            // Download and extract a small portion to check for database files
+            $tempDir = storage_path('app/temp-check-' . time());
+            File::makeDirectory($tempDir, 0755, true);
+            
+            $localBackupPath = $tempDir . '/backup-check.zip';
+            $backupContent = Storage::disk($disk)->get($backupFile);
+            
+            if (!$backupContent) {
+                File::deleteDirectory($tempDir);
+                return false;
+            }
+            
+            File::put($localBackupPath, $backupContent);
+            
+            // Extract just to check contents
+            $zip = new ZipArchive;
+            if ($zip->open($localBackupPath) !== TRUE) {
+                File::deleteDirectory($tempDir);
+                return false;
+            }
+            
+            // Check if backup requires password
+            $password = env('BACKUP_ARCHIVE_PASSWORD');
+            if ($password) {
+                $zip->setPassword($password);
+            }
+            
+            // Look for database files in the archive
+            $hasDatabase = false;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $filename = $zip->getNameIndex($i);
+                if (str_ends_with($filename, '.sql') || str_contains($filename, 'db-dumps/')) {
+                    $hasDatabase = true;
+                    break;
+                }
+            }
+            
+            $zip->close();
+            File::deleteDirectory($tempDir);
+            
+            return $hasDatabase;
+            
+        } catch (Exception $e) {
+            if (isset($tempDir) && File::exists($tempDir)) {
+                File::deleteDirectory($tempDir);
+            }
+            return false;
+        }
+    }
+
+    private function importDatabaseDump($dumpFile, $connection)
+    {
+        try {
+            $config = config("database.connections.{$connection}");
+            
+            if (!$config) {
+                $this->error("❌ Database connection '{$connection}' not found");
+                return false;
+            }
+            
+            $this->info("📊 Importing to {$connection} database...");
+            
+            // Read the SQL file
+            $sql = File::get($dumpFile);
+            if (!$sql) {
+                $this->error('❌ Failed to read SQL dump file');
+                return false;
+            }
+            
+            // Split into individual statements
+            $statements = array_filter(array_map('trim', explode(';', $sql)));
+            
+            $db = DB::connection($connection);
+            $total = count($statements);
+            $current = 0;
+            
+            foreach ($statements as $statement) {
+                if (empty($statement)) continue;
+                
+                $current++;
+                if ($current % 10 == 0) {
+                    $this->line("⏳ Processing statement {$current}/{$total}...");
+                }
+                
+                try {
+                    $db->unprepared($statement);
+                } catch (Exception $e) {
+                    $this->warn("⚠️  Statement {$current} failed: " . substr($statement, 0, 50) . "...");
+                    // Continue with other statements
+                }
+            }
+            
+            $this->info("✅ Database import completed ({$total} statements processed)");
+            return true;
+            
+        } catch (Exception $e) {
+            $this->error('❌ Database import failed: ' . $e->getMessage());
+            return false;
+        }
     }
 }
