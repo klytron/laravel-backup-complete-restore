@@ -197,20 +197,38 @@ class BackupCompleteRestoreCommand extends Command
 
         // Extract ZIP file
         $zip = new ZipArchive;
-        if ($zip->open($localBackupPath) === TRUE) {
-            $zip->extractTo($tempDir);
-            $zip->close();
-            
-            // Remove the zip file
-            File::delete($localBackupPath);
-            
-            $this->info('✅ Backup extracted successfully');
-            return $tempDir;
-        } else {
-            $this->error('❌ Failed to extract backup ZIP file');
+        if ($zip->open($localBackupPath) !== TRUE) {
+            $this->error('❌ Failed to open backup ZIP file');
             File::deleteDirectory($tempDir);
             return null;
         }
+        
+        // Check if backup requires password
+        $password = env('BACKUP_ARCHIVE_PASSWORD');
+        if ($password) {
+            $zip->setPassword($password);
+            $this->info('🔐 Using configured backup password');
+        }
+        
+                    if ($zip->extractTo($tempDir) === TRUE) {
+                $zip->close();
+                
+                // Remove the zip file
+                File::delete($localBackupPath);
+                
+                $this->info('✅ Backup extracted successfully');
+                
+                // Debug: Show what's in the extracted backup
+                $this->info('📁 Backup contents:');
+                $this->listBackupContents($tempDir);
+                
+                return $tempDir;
+            } else {
+                $zip->close();
+                $this->error('❌ Failed to extract backup ZIP file (check password if encrypted)');
+                File::deleteDirectory($tempDir);
+                return null;
+            }
     }
 
     private function restoreDatabase($disk, $backupFile)
@@ -304,33 +322,25 @@ class BackupCompleteRestoreCommand extends Command
         $restored = 0;
         $failed = 0;
 
-        // Get configuration
-        $containerBasePath = config('backup-complete-restore.container_base_path', 'var/www/html');
-        $fileMappings = config('backup-complete-restore.file_mappings', []);
+        // Look for the storage directory in the backup
+        $storagePath = $this->findStoragePathInBackup($tempDir);
         
-        $fullContainerPath = $tempDir . '/' . $containerBasePath;
-
-        if (!File::exists($fullContainerPath)) {
-            $this->error('❌ Backup does not contain expected file structure');
+        if (!$storagePath) {
+            $this->error('❌ Storage directory not found in backup');
             return false;
         }
 
-        foreach ($fileMappings as $backupPath => $localPath) {
-            $fullBackupPath = $fullContainerPath . '/' . $backupPath;
-            
-            if (File::exists($fullBackupPath)) {
-                $this->info("📁 Restoring {$backupPath}...");
-                
-                if ($this->restoreDirectory($fullBackupPath, $localPath)) {
-                    $this->info("✅ Restored {$backupPath}");
-                    $restored++;
-                } else {
-                    $this->error("❌ Failed to restore {$backupPath}");
-                    $failed++;
-                }
-            } else {
-                $this->warn("⚠️  {$backupPath} not found in backup (skipping)");
-            }
+        $this->info("📁 Found storage directory: " . basename($storagePath));
+        
+        // Restore storage directory to the current storage path
+        $targetStoragePath = storage_path();
+        
+        if ($this->restoreDirectory($storagePath, $targetStoragePath)) {
+            $this->info("✅ Restored storage directory");
+            $restored++;
+        } else {
+            $this->error("❌ Failed to restore storage directory");
+            $failed++;
         }
 
         // Fix permissions after restoration
@@ -339,11 +349,50 @@ class BackupCompleteRestoreCommand extends Command
             $this->fixPermissions();
         }
 
-        // Run custom health checks
-        $this->runHealthChecks();
-
-        $this->info("📊 Files restored: {$restored}, Failed: {$failed}");
+        $this->info("📊 File restoration completed: {$restored} successful, {$failed} failed");
         return $failed === 0;
+    }
+
+    private function findStoragePathInBackup($tempDir)
+    {
+        // Look for storage directory in common locations
+        $possiblePaths = [
+            $tempDir . '/home/laweitech-web-apps/my-custom-apps/picture-gallery-adx-redirector/storage',
+            $tempDir . '/var/www/html/storage',
+            $tempDir . '/storage',
+            $tempDir . '/app/storage',
+        ];
+
+        foreach ($possiblePaths as $path) {
+            if (File::exists($path) && File::isDirectory($path)) {
+                return $path;
+            }
+        }
+
+        // If not found in common locations, search recursively
+        $this->info('🔍 Searching for storage directory in backup...');
+        $storagePath = $this->findDirectoryRecursively($tempDir, 'storage');
+        
+        return $storagePath;
+    }
+
+    private function findDirectoryRecursively($dir, $targetDir)
+    {
+        $items = File::directories($dir);
+        
+        foreach ($items as $item) {
+            $basename = basename($item);
+            if ($basename === $targetDir) {
+                return $item;
+            }
+            
+            $found = $this->findDirectoryRecursively($item, $targetDir);
+            if ($found) {
+                return $found;
+            }
+        }
+        
+        return null;
     }
 
     private function restoreDirectory($source, $destination)
@@ -632,6 +681,40 @@ class BackupCompleteRestoreCommand extends Command
                 File::deleteDirectory($tempDir);
             }
             return false;
+        }
+    }
+
+    private function listBackupContents($tempDir, $maxDepth = 3)
+    {
+        $this->listDirectoryContents($tempDir, '', $maxDepth);
+    }
+
+    private function listDirectoryContents($dir, $prefix = '', $maxDepth = 3, $currentDepth = 0)
+    {
+        if ($currentDepth >= $maxDepth) {
+            $this->line($prefix . '└── ... (max depth reached)');
+            return;
+        }
+
+        $items = File::files($dir);
+        $directories = File::directories($dir);
+        
+        $allItems = array_merge($directories, $items);
+        
+        foreach ($allItems as $index => $item) {
+            $isLast = ($index === count($allItems) - 1);
+            $symbol = $isLast ? '└── ' : '├── ';
+            $name = basename($item);
+            
+            if (File::isDirectory($item)) {
+                $this->line($prefix . $symbol . $name . '/');
+                if ($currentDepth < $maxDepth - 1) {
+                    $this->listDirectoryContents($item, $prefix . ($isLast ? '    ' : '│   '), $maxDepth, $currentDepth + 1);
+                }
+            } else {
+                $size = $this->formatBytes(File::size($item));
+                $this->line($prefix . $symbol . $name . ' (' . $size . ')');
+            }
         }
     }
 
