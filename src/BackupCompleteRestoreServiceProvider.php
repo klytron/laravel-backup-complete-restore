@@ -18,6 +18,12 @@ class BackupCompleteRestoreServiceProvider extends ServiceProvider
             __DIR__.'/../config/backup-complete-restore.php',
             'backup-complete-restore'
         );
+
+        // Merge configuration for wnx/laravel-backup-restore compatibility
+        $this->mergeConfigFrom(
+            __DIR__.'/../config/backup-restore-compatibility.php',
+            'backup-restore'
+        );
     }
 
     /**
@@ -41,6 +47,12 @@ class BackupCompleteRestoreServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/HealthChecks' => app_path('HealthChecks'),
             ], 'backup-complete-restore-health-checks');
+
+            // Note: No need to publish compatibility configuration as it's automatically merged
+            // into Laravel's config system for wnx/laravel-backup-restore compatibility
         }
+
+        // Note: Configuration is automatically merged into Laravel's config system
+        // for wnx/laravel-backup-restore compatibility - no physical file needed
     }
 }

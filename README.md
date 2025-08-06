@@ -1,50 +1,115 @@
 # Laravel Backup Complete Restore
 
-A Laravel package that provides complete backup restoration for Spatie Laravel Backup - restores both database AND files to their exact locations.
+A comprehensive Laravel package for complete backup restoration, including both database and file restoration from **Spatie Laravel Backup** archives.
+
+## Prerequisites
+
+This package is designed to work with [Spatie Laravel Backup](https://github.com/spatie/laravel-backup) and requires it to be installed and configured in your application.
+
+### Required Dependencies
+
+1. **Spatie Laravel Backup**: The foundation backup package that creates the archives this package restores from
+   ```bash
+   composer require spatie/laravel-backup
+   ```
+
+2. **Scryba Laravel Backup Complete Restore**: This package for restoration
+   ```bash
+   composer require scryba/laravel-backup-complete-restore
+   ```
+
+### Spatie Laravel Backup Configuration
+
+Before using this package, ensure Spatie Laravel Backup is properly configured:
+
+1. **Publish Spatie configuration**:
+   ```bash
+   php artisan vendor:publish --provider="Spatie\Backup\BackupServiceProvider"
+   ```
+
+2. **Configure backup settings** in `config/backup.php`:
+   ```php
+   'backup' => [
+       'name' => env('APP_NAME', 'laravel-backup'),
+       'source' => [
+           'files' => [
+               'include' => [
+                   storage_path(),
+               ],
+               'exclude' => [
+                   storage_path('app/laravel-backup'),
+                   storage_path('app/backup-temp'),
+               ],
+           ],
+           'databases' => [
+               'mysql',
+           ],
+       ],
+       'destination' => [
+           'disks' => [
+               'local',
+               'google',
+           ],
+       ],
+   ],
+   ```
+
+3. **Set up storage disks** in `config/filesystems.php` for your backup destinations
 
 ## Features
 
-- ✅ **Complete Restoration**: Restores both database and files from Spatie Laravel Backup
-- ✅ **Exact File Placement**: Files are restored to their original locations
-- ✅ **Safety Features**: Backs up existing files before restoration
-- ✅ **Configurable Mappings**: Customize how backup paths map to local paths
-- ✅ **Permission Management**: Automatically sets correct file permissions
-- ✅ **Health Checks**: Extensible health check system
-- ✅ **Multiple Storage Support**: Works with local, Google Drive, S3, etc.
-- ✅ **Password Protection**: Supports encrypted backups
-
-## Requirements
-
-- PHP 8.1+ (supports PHP 8.1, 8.2, 8.3, 8.4)
-- Laravel 10.0+ (supports Laravel 10, 11, 12)
-- Spatie Laravel Backup 8.0+
-- WNX Laravel Backup Restore 1.6+
+- **Complete Restoration**: Restore both database and files from a single backup archive
+- **File Mapping**: Intelligent mapping of container paths to local paths
+- **Health Checks**: Comprehensive health checks after restoration
+- **Safety Features**: Backup existing files before restoration
+- **Permission Management**: Automatic permission setting for restored files
+- **Multiple Disk Support**: Restore from local, Google Drive, or other disks
+- **Progress Tracking**: Real-time progress indicators during restoration
+- **Error Handling**: Comprehensive error handling and logging
+- **Security**: Built-in security validations and confirmations
+- **Spatie Integration**: Seamlessly works with Spatie Laravel Backup archives
 
 ## Installation
-
-Install the package via Composer:
 
 ```bash
 composer require scryba/laravel-backup-complete-restore
 ```
 
+## Configuration
+
 Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="backup-complete-restore-config"
+php artisan vendor:publish --provider="Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
 ```
 
-Optionally, publish the health checks:
+### Compatibility with wnx/laravel-backup-restore
 
-```bash
-php artisan vendor:publish --tag="backup-complete-restore-health-checks"
-```
+This package automatically handles compatibility with the `wnx/laravel-backup-restore` dependency by:
 
-## Configuration
+1. **Creating Internal Classes**: Provides internal health check classes that extend the dependency classes
+2. **Config System Integration**: Automatically merges configuration into Laravel's config system for seamless compatibility
+3. **No Physical Files**: No need to create physical `config/backup-restore.php` files - everything is handled automatically
 
-The package configuration is published to `config/backup-complete-restore.php`:
+The package uses its own internal classes instead of directly depending on the external ones:
 
 ```php
+// Instead of using dependency classes directly:
+// use Wnx\LaravelBackupRestore\HealthChecks\Checks\DatabaseHasTables;
+
+// Use our internal classes:
+use Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables;
+```
+
+### Configuration Overview
+
+The `config/backup-complete-restore.php` file provides configuration that **extends** Laravel's existing configuration instead of redefining it:
+
+```php
+<?php
+
+declare(strict_types=1);
+
 return [
     // File mappings from backup to local paths
     'file_mappings' => [
@@ -66,12 +131,87 @@ return [
         'files' => 0644,
     ],
 
-    // Custom health checks
+    // Web accessible directories
+    'web_directories' => [
+        'public/uploads',
+        'public/download',
+    ],
+
+    // Storage directories
+    'storage_directories' => [
+        'storage/app',
+        'storage/plugins',
+    ],
+
+    // Health checks
     'health_checks' => [
         // Add your health check classes here
     ],
+
+    // Database restoration options (extends config/database.php)
+    'database' => [
+        'restore_options' => [
+            'drop_tables_before_restore' => false,
+            'skip_foreign_key_checks' => true,
+            'use_single_transaction' => true,
+        ],
+    ],
+
+    // File restoration options (extends config/filesystems.php and config/backup.php)
+    'files' => [
+        'restore_options' => [
+            'overwrite_existing' => true,
+            'preserve_permissions' => true,
+            'create_directories' => true,
+        ],
+    ],
+
+    // Backup source overrides (extends config/backup.php)
+    'backup_sources' => [
+        'filename_pattern_override' => null, // Set to override, null to use config/backup.php
+        'file_extension' => '.zip',
+    ],
+
+    // Restoration process configuration
+    'restoration' => [
+        'show_progress' => true,
+        'validate_backup' => true,
+        'create_safety_backup' => true,
+        'max_execution_time' => 3600,
+        'memory_limit' => '512M',
+        'run_health_checks' => true,
+        'clear_caches' => true,
+        'optimize_application' => true,
+    ],
+
+    // Error handling and logging
+    'error_handling' => [
+        'log_restorations' => true,
+        'log_level' => 'info',
+        'notify_on_failure' => true,
+        'notify_on_success' => true,
+        'max_retry_attempts' => 3,
+        'retry_delay' => 60,
+    ],
+
+    // Security and validation
+    'security' => [
+        'require_confirmation' => true,
+        'validate_integrity' => true,
+        'check_permissions' => true,
+        'allowed_extensions' => ['zip', 'tar.gz', 'tar'],
+        'max_file_size' => 1073741824, // 1GB
+    ],
+
+    // Temporary directory
+    'temp_directory' => storage_path('app/temp-restore'),
+
+    // Cleanup temporary files
+    'cleanup_temp_files' => true,
 ];
 ```
+
+**Important**: This package reads backup configuration from `config/backup.php` (Spatie Laravel Backup configuration), so ensure your Spatie backup configuration is properly set up before using this package.
 
 ## Usage
 
@@ -117,133 +257,166 @@ php artisan backup:restore-complete --reset
 php artisan backup:restore-complete --connection=mysql_backup
 ```
 
-## How It Works
+## Configuration Sections
 
-1. **Database Restoration**: Uses the existing `backup:restore` command from WNX Laravel Backup Restore
-2. **File Extraction**: Extracts the backup ZIP to a temporary directory
-3. **Path Mapping**: Maps backup paths (e.g., `var/www/html/public/uploads`) to local paths
-4. **File Restoration**: Copies files to their correct locations with proper permissions
-5. **Health Checks**: Runs optional health checks to verify restoration
-6. **Cleanup**: Removes temporary files
+### File Mappings
 
-## File Mapping
+The `file_mappings` section defines how files from the backup should be mapped to local paths:
 
-The package automatically handles the path differences between backup containers and your local environment:
+```php
+'file_mappings' => [
+    'public/uploads' => public_path('uploads'),
+    'public/download' => public_path('download'),
+    'storage/app' => storage_path('app'),
+    'storage/plugins' => storage_path('plugins'),
+],
+```
 
-| Backup Path | Local Path | Description |
-|-------------|------------|-------------|
-| `var/www/html/public/uploads` | `public/uploads` | User uploads |
-| `var/www/html/public/download` | `public/download` | Download files |
-| `var/www/html/storage/app` | `storage/app` | Application storage |
-| `var/www/html/storage/plugins` | `storage/plugins` | Plugin storage |
+This is essential for correctly mapping files from container paths (e.g., `/var/www/html/public/uploads`) to local paths (e.g., `public/uploads`).
 
-## Safety Features
+### Database Configuration
 
-- **Existing File Backup**: Creates timestamped backups of existing directories
-- **Permission Management**: Sets appropriate permissions for web and storage directories
-- **Confirmation Prompts**: Requires confirmation before destructive operations
-- **Error Handling**: Comprehensive error handling with detailed messages
+The `database` section extends Laravel's existing database configuration from `config/database.php`:
+
+```php
+'database' => [
+    'restore_options' => [
+        'drop_tables_before_restore' => false,
+        'skip_foreign_key_checks' => true,
+        'use_single_transaction' => true,
+    ],
+],
+```
+
+**Note**: Database connections are automatically read from `config/database.php`, so you don't need to redefine them here.
+
+### Health Checks
+
+Add custom health checks to verify restoration success:
+
+```php
+'health_checks' => [
+    // Built-in health checks
+    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+        'files' => [
+            storage_path('app/public'),
+            storage_path('logs'),
+            storage_path('framework/cache'),
+        ],
+    ],
+    
+    // Custom health checks
+    \App\HealthChecks\DatabaseConnectionCheck::class,
+    \App\HealthChecks\FileIntegrityCheck::class,
+],
+```
+
+### Security Settings
+
+Configure security and validation settings:
+
+```php
+'security' => [
+    'require_confirmation' => true,
+    'validate_integrity' => true,
+    'check_permissions' => true,
+    'allowed_extensions' => ['zip', 'tar.gz', 'tar'],
+    'max_file_size' => 1073741824, // 1GB
+],
+```
 
 ## Health Checks
 
-Create custom health checks by extending the base health check class:
+Create custom health checks by extending the base HealthCheck class:
 
 ```php
 <?php
 
 namespace App\HealthChecks;
 
-class CustomHealthCheck
+use Scryba\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
+
+class DatabaseConnectionCheck extends HealthCheck
 {
-    public function run()
+    public function run(): bool
     {
-        // Your health check logic
-        return true; // or false
+        try {
+            \DB::connection()->getPdo();
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }
 ```
 
-Add to configuration:
+## Error Handling
 
-```php
-'health_checks' => [
-    \App\HealthChecks\CustomHealthCheck::class,
-],
-```
+The package provides comprehensive error handling:
 
-## Example Output
+- **Logging**: All restoration activities are logged
+- **Notifications**: Success/failure notifications via your backup notification system
+- **Retry Logic**: Automatic retry for failed operations
+- **Safety Backups**: Creates backup before restoration
+- **Validation**: Backup file integrity verification
 
-```
-🔄 Complete Backup Restore Tool
+## Security Features
 
-⚠️  WARNING: This will restore your database AND files from backup!
-⚠️  This operation will overwrite your current data and files.
+- **Confirmation Prompts**: Requires user confirmation for destructive operations
+- **File Validation**: Validates backup file integrity and permissions
+- **Size Limits**: Configurable maximum file size limits
+- **Extension Validation**: Only allows specified file extensions
 
-Are you sure you want to continue? (yes/no) [no]: yes
+## Integration with Spatie Laravel Backup
 
-📁 Using backup: app-backup-2024-01-15-10-30-00.zip
+This package is specifically designed to work with [Spatie Laravel Backup](https://spatie.be/docs/laravel-backup). It reads the backup archives created by Spatie Laravel Backup and restores both the database dumps and file archives.
 
-🗄️  Restoring database...
-🔐 Using configured backup password
-🚀 Starting database restore...
-✅ Database restored successfully
+### How It Works
 
-📁 Restoring files...
-✅ Backup extracted successfully
-📁 Restoring public/uploads...
-📦 Backing up existing /var/www/html/public/uploads to /var/www/html/public/uploads_backup_1705312200
-✅ Restored public/uploads
-📁 Restoring storage/app...
-✅ Restored storage/app
-🔧 Fixing file permissions...
-✅ File permissions updated
-📊 Files restored: 2, Failed: 0
-🧹 Cleaned up temporary files
+1. **Backup Creation**: Use Spatie Laravel Backup to create backups
+   ```bash
+   php artisan backup:run
+   ```
 
-✅ Complete restore finished successfully!
-🎉 Your application is ready to use!
+2. **Backup Storage**: Backups are stored according to your Spatie configuration in `config/backup.php`
 
-💡 Recommended next steps:
-   • Clear application cache: php artisan cache:clear
-   • Clear config cache: php artisan config:clear
-   • Check file permissions
-   • Test critical functionality
-```
+3. **Restoration**: Use this package to restore from those backups
+   ```bash
+   php artisan backup:restore-complete
+   ```
 
-## Version Compatibility
+### Configuration Integration
 
-| Package Version | PHP Version | Laravel Version | Status |
-|----------------|-------------|-----------------|---------|
-| 1.x | 8.1, 8.2, 8.3, 8.4 | 10, 11, 12 | ✅ Active |
+This package automatically reads from your Spatie Laravel Backup configuration:
 
-## Testing
+- **Backup Name**: From `config('backup.backup.name')`
+- **Storage Disks**: From `config('backup.backup.destination.disks')`
+- **File Paths**: From `config('backup.backup.source.files.include')`
+- **Database Connections**: From `config('backup.backup.source.databases')`
 
-Run the tests with:
+## Troubleshooting
 
-```bash
-composer test
-```
+### Common Issues
 
-Run tests with coverage:
+1. **Permission Errors**: Ensure the web server has write permissions to the restoration directories
+2. **Memory Limits**: Increase PHP memory limit for large backups
+3. **Timeout Issues**: Adjust `max_execution_time` in the configuration
+4. **Path Mapping**: Verify `file_mappings` and `container_base_path` settings
+5. **Spatie Configuration**: Ensure Spatie Laravel Backup is properly configured
+
+### Debug Mode
+
+Enable debug mode to get more detailed information:
 
 ```bash
-composer test-coverage
+php artisan backup:restore-complete --verbose
 ```
 
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-## Security
-
-If you discover any security related issues, please email contact@michael.laweitech.com instead of using the issue tracker.
-
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
-
-## Credits
-
-- Built on top of [Spatie Laravel Backup](https://github.com/spatie/laravel-backup)
-- Uses [WNX Laravel Backup Restore](https://github.com/stefanzweifel/laravel-backup-restore) for database restoration
-- Created by [Michael K. Laweh](https://michael.laweitech.com)

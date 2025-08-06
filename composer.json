@@ -1,6 +1,6 @@
 {
   "name": "scryba/laravel-backup-complete-restore",
-  "description": "Complete backup restoration for Spatie Laravel Backup - restores both database and files to their exact locations",
+  "description": "Complete backup restoration for Spatie Laravel Backup - restores both database and files to their exact locations with consolidated configuration and internal health checks",
   "type": "library",
   "license": "MIT",
   "keywords": [
@@ -10,7 +10,9 @@
     "spatie",
     "database",
     "files",
-    "complete-restore"
+    "complete-restore",
+    "health-checks",
+    "consolidated-config"
   ],
   "authors": [
     {
@@ -56,8 +58,8 @@
     }
   },
   "minimum-stability": "stable",
-  "version": "1.2.0",
-    "prefer-stable": true,
+  "version": "1.3.0",
+  "prefer-stable": true,
   "config": {
     "sort-packages": true
   }

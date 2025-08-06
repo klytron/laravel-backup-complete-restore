@@ -5,7 +5,37 @@ All notable changes to `laravel-backup-complete-restore` will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0] - 2025-01-15
+
+### Added
+- **Consolidated Configuration**: Single `config/backup-complete-restore.php` file instead of multiple configuration files
+- **Internal Health Check Classes**: Self-contained health check classes that extend dependency classes
+- **Config System Integration**: Automatic merging of configuration into Laravel's config system
+- **Spatie Integration Documentation**: Clear documentation of Spatie Laravel Backup dependency and integration
+- **Leveraged Existing Laravel Config**: Uses existing `config/database.php`, `config/filesystems.php`, and `config/backup.php` instead of redefining settings
+- **Compatibility Layer**: Automatic compatibility with `wnx/laravel-backup-restore` without creating physical files
+- **Enhanced Documentation**: Comprehensive documentation with examples and best practices
+
+### Changed
+- **Configuration Structure**: Simplified configuration that extends existing Laravel configuration
+- **Service Provider**: Updated to merge configuration automatically instead of creating physical files
+- **Documentation**: Complete rewrite of README and documentation to emphasize Spatie integration
+- **Package Description**: Updated to reflect consolidated configuration and internal classes
+- **Keywords**: Added new keywords for health-checks and consolidated-config
+
+### Improved
+- **Maintainability**: Single source of truth for configuration
+- **User Experience**: Cleaner installation and configuration process
+- **Integration**: Better integration with existing Laravel configuration
+- **Future-Proof**: Less vulnerable to breaking changes in dependencies
+
+### Technical Improvements
+- **No Configuration Duplication**: Database, files, and backup settings read from existing Laravel config
+- **Self-Contained Package**: Internal classes reduce direct dependency on external packages
+- **Config System Integration**: Uses Laravel's `mergeConfigFrom()` for seamless compatibility
+- **Automatic Compatibility**: Creates compatibility layer for `wnx/laravel-backup-restore` automatically
+
+## [1.2.0] - 2025-01-10
 
 ### Added
 - Support for PHP 8.4
