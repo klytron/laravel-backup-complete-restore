@@ -205,9 +205,28 @@ class BackupCompleteRestoreCommand extends Command
         
         // Check if backup requires password
         $password = env('BACKUP_ARCHIVE_PASSWORD');
+        if (!$password) {
+            // Try alternative methods to get the password
+            $password = config('backup.backup.password');
+        }
+        if (!$password) {
+            // Try reading directly from .env file
+            $envPath = base_path('.env');
+            if (file_exists($envPath)) {
+                $envContent = file_get_contents($envPath);
+                if (preg_match('/BACKUP_ARCHIVE_PASSWORD=(.+)/', $envContent, $matches)) {
+                    $password = trim($matches[1]);
+                    // Remove quotes if present
+                    $password = trim($password, '"\'');
+                }
+            }
+        }
+        
         if ($password) {
             $zip->setPassword($password);
             $this->info('🔐 Using configured backup password');
+        } else {
+            $this->warn('⚠️  No backup password found - trying without password');
         }
         
                     if ($zip->extractTo($tempDir) === TRUE) {
@@ -268,9 +287,28 @@ class BackupCompleteRestoreCommand extends Command
             
             // Check if backup requires password
             $password = env('BACKUP_ARCHIVE_PASSWORD');
+            if (!$password) {
+                // Try alternative methods to get the password
+                $password = config('backup.backup.password');
+            }
+            if (!$password) {
+                // Try reading directly from .env file
+                $envPath = base_path('.env');
+                if (file_exists($envPath)) {
+                    $envContent = file_get_contents($envPath);
+                    if (preg_match('/BACKUP_ARCHIVE_PASSWORD=(.+)/', $envContent, $matches)) {
+                        $password = trim($matches[1]);
+                        // Remove quotes if present
+                        $password = trim($password, '"\'');
+                    }
+                }
+            }
+            
             if ($password) {
                 $zip->setPassword($password);
                 $this->info('🔐 Using configured backup password');
+            } else {
+                $this->warn('⚠️  No backup password found - trying without password');
             }
             
             $zip->extractTo($extractDir);
