@@ -4,6 +4,7 @@ namespace Scryba\LaravelBackupCompleteRestore;
 
 use Illuminate\Support\ServiceProvider;
 use Scryba\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
+use Scryba\LaravelBackupCompleteRestore\Commands\ScrybaBackupHealthCheckCommand;
 
 class BackupCompleteRestoreServiceProvider extends ServiceProvider
 {
@@ -28,6 +29,7 @@ class BackupCompleteRestoreServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 BackupCompleteRestoreCommand::class,
+                ScrybaBackupHealthCheckCommand::class,
             ]);
 
             // Publish configuration
