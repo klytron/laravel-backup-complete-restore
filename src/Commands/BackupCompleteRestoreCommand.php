@@ -360,35 +360,59 @@ class BackupCompleteRestoreCommand extends Command
         $restored = 0;
         $failed = 0;
 
-        // Look for the storage directory in the backup
-        $storagePath = $this->findStoragePathInBackup($tempDir);
-        
-        if (!$storagePath) {
-            $this->error('❌ Storage directory not found in backup');
+        try {
+            // Look for the storage directory in the backup
+            $storagePath = $this->findStoragePathInBackup($tempDir);
+            
+            if (!$storagePath) {
+                $this->error('❌ Storage directory not found in backup');
+                $this->warn('💡 Available directories in backup:');
+                $this->listBackupContents($tempDir, 2);
+                return false;
+            }
+
+            $this->info("📁 Found storage directory: " . basename($storagePath));
+            
+            // Restore storage directory to the current storage path
+            $targetStoragePath = storage_path();
+            
+            $this->info("🔄 Restoring storage from: " . basename($storagePath));
+            $this->info("🔄 Restoring storage to: " . $targetStoragePath);
+            
+            if ($this->restoreDirectory($storagePath, $targetStoragePath)) {
+                $this->info("✅ Restored storage directory");
+                $restored++;
+            } else {
+                $this->error("❌ Failed to restore storage directory");
+                $failed++;
+            }
+
+            // Also try to restore public directories if they exist
+            $publicPaths = $this->findPublicPathsInBackup($tempDir);
+            foreach ($publicPaths as $publicPath) {
+                $this->info("🔄 Restoring public directory: " . basename($publicPath));
+                if ($this->restorePublicDirectory($publicPath)) {
+                    $this->info("✅ Restored public directory: " . basename($publicPath));
+                    $restored++;
+                } else {
+                    $this->warn("⚠️  Failed to restore public directory: " . basename($publicPath));
+                    $failed++;
+                }
+            }
+
+            // Fix permissions after restoration
+            if ($restored > 0) {
+                $this->info('🔧 Fixing file permissions...');
+                $this->fixPermissions();
+            }
+
+            $this->info("📊 File restoration completed: {$restored} successful, {$failed} failed");
+            return $failed === 0;
+            
+        } catch (Exception $e) {
+            $this->error('❌ File restoration failed with error: ' . $e->getMessage());
             return false;
         }
-
-        $this->info("📁 Found storage directory: " . basename($storagePath));
-        
-        // Restore storage directory to the current storage path
-        $targetStoragePath = storage_path();
-        
-        if ($this->restoreDirectory($storagePath, $targetStoragePath)) {
-            $this->info("✅ Restored storage directory");
-            $restored++;
-        } else {
-            $this->error("❌ Failed to restore storage directory");
-            $failed++;
-        }
-
-        // Fix permissions after restoration
-        if ($restored > 0) {
-            $this->info('🔧 Fixing file permissions...');
-            $this->fixPermissions();
-        }
-
-        $this->info("📊 File restoration completed: {$restored} successful, {$failed} failed");
-        return $failed === 0;
     }
 
     private function findStoragePathInBackup($tempDir)
@@ -396,13 +420,16 @@ class BackupCompleteRestoreCommand extends Command
         // Look for storage directory in common locations
         $possiblePaths = [
             $tempDir . '/home/laweitech-web-apps/my-custom-apps/picture-gallery-adx-redirector/storage',
+            $tempDir . '/home/laweitech-web-apps/my-custom-apps/shyndorca-tp/storage',
             $tempDir . '/var/www/html/storage',
             $tempDir . '/storage',
             $tempDir . '/app/storage',
+            $tempDir . '/app/public/storage',
         ];
 
         foreach ($possiblePaths as $path) {
             if (File::exists($path) && File::isDirectory($path)) {
+                $this->info("✅ Found storage directory: " . basename($path));
                 return $path;
             }
         }
@@ -410,6 +437,12 @@ class BackupCompleteRestoreCommand extends Command
         // If not found in common locations, search recursively
         $this->info('🔍 Searching for storage directory in backup...');
         $storagePath = $this->findDirectoryRecursively($tempDir, 'storage');
+        
+        if ($storagePath) {
+            $this->info("✅ Found storage directory recursively: " . basename($storagePath));
+        } else {
+            $this->warn("⚠️  Storage directory not found in common locations");
+        }
         
         return $storagePath;
     }
@@ -431,6 +464,73 @@ class BackupCompleteRestoreCommand extends Command
         }
         
         return null;
+    }
+
+    private function findPublicPathsInBackup($tempDir)
+    {
+        $publicPaths = [];
+        
+        // Look for public directories in common locations
+        $possiblePaths = [
+            $tempDir . '/home/laweitech-web-apps/my-custom-apps/shyndorca-tp/public',
+            $tempDir . '/home/laweitech-web-apps/my-custom-apps/picture-gallery-adx-redirector/public',
+            $tempDir . '/var/www/html/public',
+            $tempDir . '/public',
+            $tempDir . '/app/public',
+        ];
+
+        foreach ($possiblePaths as $path) {
+            if (File::exists($path) && File::isDirectory($path)) {
+                $publicPaths[] = $path;
+            }
+        }
+
+        // If not found in common locations, search recursively
+        if (empty($publicPaths)) {
+            $this->info('🔍 Searching for public directories in backup...');
+            $publicPath = $this->findDirectoryRecursively($tempDir, 'public');
+            if ($publicPath) {
+                $publicPaths[] = $publicPath;
+            }
+        }
+        
+        return $publicPaths;
+    }
+
+    private function restorePublicDirectory($publicPath)
+    {
+        try {
+            $targetPublicPath = public_path();
+            
+            // Check if this is a ShynDorca TP project (has uploads/download directories)
+            $hasUploads = File::exists($publicPath . '/uploads');
+            $hasDownload = File::exists($publicPath . '/download');
+            
+            if ($hasUploads || $hasDownload) {
+                $this->info("📁 Detected ShynDorca TP public directory");
+                
+                // Restore specific directories that are backed up
+                if ($hasUploads) {
+                    $this->info("🔄 Restoring uploads directory...");
+                    $this->copyDirectoryContents($publicPath . '/uploads', $targetPublicPath . '/uploads');
+                }
+                
+                if ($hasDownload) {
+                    $this->info("🔄 Restoring download directory...");
+                    $this->copyDirectoryContents($publicPath . '/download', $targetPublicPath . '/download');
+                }
+                
+                return true;
+            } else {
+                // For other projects, restore the entire public directory
+                $this->info("🔄 Restoring entire public directory...");
+                return $this->restoreDirectory($publicPath, $targetPublicPath);
+            }
+            
+        } catch (Exception $e) {
+            $this->error("❌ Failed to restore public directory: " . $e->getMessage());
+            return false;
+        }
     }
 
     private function restoreDirectory($source, $destination)
@@ -767,6 +867,7 @@ class BackupCompleteRestoreCommand extends Command
             }
             
             $this->info("📊 Importing to {$connection} database...");
+            $this->info("📊 Database: {$config['database']} on {$config['host']}:{$config['port']}");
             
             // Read the SQL file
             $sql = File::get($dumpFile);
@@ -775,31 +876,45 @@ class BackupCompleteRestoreCommand extends Command
                 return false;
             }
             
+            $this->info("📊 SQL file size: " . $this->formatBytes(strlen($sql)));
+            
             // Split into individual statements
             $statements = array_filter(array_map('trim', explode(';', $sql)));
             
             $db = DB::connection($connection);
             $total = count($statements);
             $current = 0;
+            $errors = 0;
+            
+            $this->info("📊 Processing {$total} SQL statements...");
             
             foreach ($statements as $statement) {
                 if (empty($statement)) continue;
                 
                 $current++;
-                if ($current % 10 == 0) {
-                    $this->line("⏳ Processing statement {$current}/{$total}...");
+                if ($current % 50 == 0) {
+                    $this->line("⏳ Processing statement {$current}/{$total}... (errors: {$errors})");
                 }
                 
                 try {
                     $db->unprepared($statement);
                 } catch (Exception $e) {
-                    $this->warn("⚠️  Statement {$current} failed: " . substr($statement, 0, 50) . "...");
+                    $errors++;
+                    if ($errors <= 5) { // Only show first 5 errors
+                        $this->warn("⚠️  Statement {$current} failed: " . substr($statement, 0, 100) . "...");
+                        $this->warn("   Error: " . $e->getMessage());
+                    }
                     // Continue with other statements
                 }
             }
             
-            $this->info("✅ Database import completed ({$total} statements processed)");
-            return true;
+            if ($errors > 0) {
+                $this->warn("⚠️  Database import completed with {$errors} errors out of {$total} statements");
+            } else {
+                $this->info("✅ Database import completed successfully ({$total} statements processed)");
+            }
+            
+            return $errors < $total; // Return true if at least some statements succeeded
             
         } catch (Exception $e) {
             $this->error('❌ Database import failed: ' . $e->getMessage());
