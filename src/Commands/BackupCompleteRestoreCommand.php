@@ -419,8 +419,6 @@ class BackupCompleteRestoreCommand extends Command
     {
         // Look for storage directory in common locations
         $possiblePaths = [
-            $tempDir . '/home/laweitech-web-apps/my-custom-apps/picture-gallery-adx-redirector/storage',
-            $tempDir . '/home/laweitech-web-apps/my-custom-apps/shyndorca-tp/storage',
             $tempDir . '/var/www/html/storage',
             $tempDir . '/storage',
             $tempDir . '/app/storage',
@@ -472,8 +470,6 @@ class BackupCompleteRestoreCommand extends Command
         
         // Look for public directories in common locations
         $possiblePaths = [
-            $tempDir . '/home/laweitech-web-apps/my-custom-apps/shyndorca-tp/public',
-            $tempDir . '/home/laweitech-web-apps/my-custom-apps/picture-gallery-adx-redirector/public',
             $tempDir . '/var/www/html/public',
             $tempDir . '/public',
             $tempDir . '/app/public',
