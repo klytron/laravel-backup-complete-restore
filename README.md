@@ -206,11 +206,11 @@ The MIT License (MIT). Please see [License File](LICENSE.md) for more informatio
 
 ## 📞 Support
 
-- 📧 **Email**: contact@michael.laweitech.com
-- 🌐 **Website**: https://michael.laweitech.com/
-- ☕ **Buy me a coffee**: https://michael.laweitech.com/buy-me-a-coffee
+- 📧 **Email**: hi@klytron.com
+- 🌐 **Website**: https://www.klytron.com
+- ☕ **Support the project**: https://www.klytron.com/buy-me-a-coffee
 - 🐛 **Issues**: [GitHub Issues](https://github.com/klytron/laravel-backup-complete-restore/issues)
 
 ---
 
-**Made with ❤️ by [Michael K. Laweh](https://michael.laweitech.com/)**
+**Made with ❤️ by [Michael K. Laweh](https://www.klytron.com)**

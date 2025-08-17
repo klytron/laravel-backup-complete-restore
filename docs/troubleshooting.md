@@ -470,8 +470,8 @@ Test components individually:
 
 2. **Reinstall the package:**
    ```bash
-   composer remove scryba/laravel-backup-complete-restore
-   composer require scryba/laravel-backup-complete-restore
+   composer remove klytron/laravel-backup-complete-restore
+   composer require klytron/laravel-backup-complete-restore
    ```
 
 3. **Check system requirements:**
@@ -484,7 +484,7 @@ Test components individually:
 
 If you continue to experience issues:
 
-1. Check the [GitHub issues](https://github.com/scryba/laravel-backup-complete-restore/issues)
+1. Check the [GitHub issues](https://github.com/klytron/laravel-backup-complete-restore/issues)
 2. Create a new issue with:
    - Laravel version
    - PHP version

@@ -2,7 +2,7 @@
 
 Contributions are **welcome** and will be fully **credited**.
 
-We accept contributions via Pull Requests on [GitHub](https://github.com/scryba/laravel-backup-complete-restore).
+We accept contributions via Pull Requests on [GitHub](https://github.com/klytron/laravel-backup-complete-restore).
 
 ## Pull Requests
 
@@ -35,6 +35,6 @@ composer fix-style
 
 ## Security
 
-If you discover any security related issues, please email contact@michael.laweitech.com instead of using the issue tracker.
+If you discover any security related issues, please email hi@klytron.com instead of using the issue tracker.
 
 **Happy coding**!
