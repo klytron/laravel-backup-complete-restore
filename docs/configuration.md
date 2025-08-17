@@ -185,13 +185,13 @@ Configure health checks that run after restoration:
 ```php
 'health_checks' => [
     // Basic database health checks
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
     
     // Check if database has records (optional)
-    // \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
+    // \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
     
     // Check if critical files exist after restoration
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
         'files' => [
             storage_path('app/public'),
             storage_path('logs'),
@@ -225,7 +225,7 @@ This package automatically reads from your existing Laravel configuration:
 To customize the configuration:
 
 ```bash
-php artisan vendor:publish --provider="Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
+php artisan vendor:publish --provider="Klytron\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
 ```
 
 This will create `config/backup-complete-restore.php` in your application.

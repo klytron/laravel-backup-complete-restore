@@ -85,7 +85,7 @@ Automatic compatibility with `wnx/laravel-backup-restore` through config system 
 The package automatically registers its configuration. To customize settings:
 
 ```bash
-php artisan vendor:publish --provider="Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
+php artisan vendor:publish --provider="Klytron\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
 ```
 
 ### Basic Configuration
@@ -100,8 +100,8 @@ return [
     ],
     
     'health_checks' => [
-        \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
-        \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+        \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+        \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
             'files' => [
                 storage_path('app/public'),
                 storage_path('logs'),

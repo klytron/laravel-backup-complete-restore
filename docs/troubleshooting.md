@@ -300,8 +300,8 @@ This guide covers common issues you may encounter when using the Laravel Backup 
 1. Check health check configuration:
    ```php
    'health_checks' => [
-       \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
-       \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+       \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+       \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
            'files' => [
                storage_path('app/public'),
                storage_path('logs'),
@@ -319,7 +319,7 @@ This guide covers common issues you may encounter when using the Laravel Backup 
    ```php
    'health_checks' => [
        // Comment out failing checks
-       // \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
+       // \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
    ],
    ```
 

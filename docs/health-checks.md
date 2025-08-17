@@ -51,7 +51,7 @@ Verifies that critical files exist after restoration.
 **Configuration:**
 ```php
 'health_checks' => [
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
         'files' => [
             storage_path('app/public'),
             storage_path('logs'),
@@ -79,7 +79,7 @@ You can create custom health checks by extending the base health check class:
 
 namespace App\HealthChecks;
 
-use Scryba\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
+use Klytron\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
 
 class CustomDatabaseCheck extends HealthCheck
 {
@@ -115,8 +115,8 @@ Add your custom health checks to the configuration:
 ```php
 'health_checks' => [
     // Built-in checks
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
         'files' => [
             storage_path('app/public'),
             storage_path('logs'),
@@ -138,7 +138,7 @@ All health checks should extend the base `HealthCheck` class:
 ```php
 <?php
 
-namespace Scryba\LaravelBackupCompleteRestore\HealthChecks;
+namespace Klytron\LaravelBackupCompleteRestore\HealthChecks;
 
 abstract class HealthCheck
 {
@@ -191,7 +191,7 @@ abstract class HealthCheck
 
 namespace App\HealthChecks;
 
-use Scryba\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
+use Klytron\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
 
 class ApplicationHealthCheck extends HealthCheck
 {
@@ -242,7 +242,7 @@ class ApplicationHealthCheck extends HealthCheck
 
 namespace App\HealthChecks;
 
-use Scryba\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
+use Klytron\LaravelBackupCompleteRestore\HealthChecks\HealthCheck;
 
 class ConfigurableHealthCheck extends HealthCheck
 {
@@ -439,11 +439,11 @@ $errors = $check->getErrors();
 ```php
 'health_checks' => [
     // Database checks
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
     
     // File checks
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
         'files' => [
             storage_path('app/public'),
             storage_path('logs'),
