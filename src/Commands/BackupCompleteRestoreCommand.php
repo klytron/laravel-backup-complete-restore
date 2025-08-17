@@ -1,6 +1,6 @@
 <?php
 
-namespace Scryba\LaravelBackupCompleteRestore\Commands;
+namespace Klytron\LaravelBackupCompleteRestore\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;

@@ -11,9 +11,9 @@ This package is designed to work with [Spatie Laravel Backup](https://github.com
    composer require spatie/laravel-backup
    ```
 
-2. **Scryba Laravel Backup Complete Restore**: This package for restoration
+2. **Klytron Laravel Backup Complete Restore**: This package for restoration
    ```bash
-   composer require scryba/laravel-backup-complete-restore
+   composer require klytron/laravel-backup-complete-restore
    ```
 
 ## Spatie Laravel Backup Configuration
@@ -110,7 +110,7 @@ Set up your file systems in `config/filesystems.php`:
 ### 1. Install via Composer
 
 ```bash
-composer require scryba/laravel-backup-complete-restore
+composer require klytron/laravel-backup-complete-restore
 ```
 
 ### 2. Publish Configuration (Optional)
@@ -118,7 +118,7 @@ composer require scryba/laravel-backup-complete-restore
 The package will automatically register its configuration. If you want to customize settings:
 
 ```bash
-php artisan vendor:publish --provider="Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
+php artisan vendor:publish --provider="Klytron\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
 ```
 
 ### 3. Verify Installation

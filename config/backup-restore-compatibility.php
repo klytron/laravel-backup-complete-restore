@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables;
-use Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords;
-use Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist;
+use Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables;
+use Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords;
+use Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist;
 
 return [
     /*

@@ -103,9 +103,9 @@ return [
     | HealthCheck class. The restore command will fail if any health checks fail.
     |
     | Available built-in health checks:
-    | - \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class
-    | - \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class
-    | - \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class
+    | - \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class
+    | - \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class
+    | - \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class
     |
     */
     'health_checks' => [

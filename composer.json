@@ -1,5 +1,5 @@
 {
-  "name": "scryba/laravel-backup-complete-restore",
+  "name": "klytron/laravel-backup-complete-restore",
   "description": "Complete backup restoration for Spatie Laravel Backup - restores both database and files to their exact locations with consolidated configuration and internal health checks",
   "type": "library",
   "license": "MIT",
@@ -17,15 +17,15 @@
   "authors": [
     {
       "name": "Michael K. Laweh",
-      "email": "contact@michael.laweitech.com",
-      "homepage": "https://michael.laweitech.com/",
+      "email": "hi@klytron.com",
+      "homepage": "https://www.klytron.com",
       "role": "Developer"
     }
   ],
   "funding": [
     {
       "type": "custom",
-      "url": "https://michael.laweitech.com/buy-me-a-coffee"
+      "url": "https://www.klytron.com/buy-me-a-coffee"
     }
   ],
   "require": {
@@ -42,18 +42,18 @@
   },
   "autoload": {
     "psr-4": {
-      "Scryba\\LaravelBackupCompleteRestore\\": "src/"
+      "Klytron\\LaravelBackupCompleteRestore\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Scryba\\LaravelBackupCompleteRestore\\Tests\\": "tests/"
+      "Klytron\\LaravelBackupCompleteRestore\\Tests\\": "tests/"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "Scryba\\LaravelBackupCompleteRestore\\BackupCompleteRestoreServiceProvider"
+        "Klytron\\LaravelBackupCompleteRestore\\BackupCompleteRestoreServiceProvider"
       ]
     }
   },

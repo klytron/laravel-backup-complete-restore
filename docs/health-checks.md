@@ -15,7 +15,7 @@ Verifies that the restored database contains tables.
 **Configuration:**
 ```php
 'health_checks' => [
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
 ],
 ```
 
@@ -31,7 +31,7 @@ Verifies that the restored database contains records in tables.
 **Configuration:**
 ```php
 'health_checks' => [
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasRecords::class,
 ],
 ```
 
@@ -316,7 +316,7 @@ php artisan backup:health-check
 Run your custom health checks:
 
 ```bash
-php artisan scryba:backup-health-check
+php artisan klytron:backup-health-check
 ```
 
 ## Health Check Output
@@ -424,8 +424,8 @@ $errors = $check->getErrors();
 
 ```php
 'health_checks' => [
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
-    \Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\DatabaseHasTables::class,
+    \Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks\FilesExist::class => [
         'files' => [
             storage_path('app/public'),
             storage_path('logs'),

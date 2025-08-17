@@ -1,9 +1,9 @@
 # Laravel Backup Complete Restore
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/scryba/laravel-backup-complete-restore.svg)](https://packagist.org/packages/scryba/laravel-backup-complete-restore)
-[![Total Downloads](https://img.shields.io/packagist/dt/scryba/laravel-backup-complete-restore.svg)](https://packagist.org/packages/scryba/laravel-backup-complete-restore)
-[![License](https://img.shields.io/packagist/l/scryba/laravel-backup-complete-restore.svg)](https://packagist.org/packages/scryba/laravel-backup-complete-restore)
-[![PHP Version](https://img.shields.io/packagist/php-v/scryba/laravel-backup-complete-restore.svg)](https://packagist.org/packages/scryba/laravel-backup-complete-restore)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/klytron/laravel-backup-complete-restore.svg)](https://packagist.org/packages/klytron/laravel-backup-complete-restore)
+[![Total Downloads](https://img.shields.io/packagist/dt/klytron/laravel-backup-complete-restore.svg)](https://packagist.org/packages/klytron/laravel-backup-complete-restore)
+[![License](https://img.shields.io/packagist/l/klytron/laravel-backup-complete-restore.svg)](https://packagist.org/packages/klytron/laravel-backup-complete-restore)
+[![PHP Version](https://img.shields.io/packagist/php-v/klytron/laravel-backup-complete-restore.svg)](https://packagist.org/packages/klytron/laravel-backup-complete-restore)
 
 A comprehensive Laravel package for complete backup restoration, including both database and file restoration from **Spatie Laravel Backup** archives with consolidated configuration and internal health checks.
 
@@ -24,7 +24,7 @@ A comprehensive Laravel package for complete backup restoration, including both 
 ### Installation
 
 ```bash
-composer require scryba/laravel-backup-complete-restore
+composer require klytron/laravel-backup-complete-restore
 ```
 
 ### Basic Usage
@@ -117,7 +117,7 @@ return [
 |---------|-------------|
 | `backup:restore-complete` | Complete backup restoration (database + files) |
 | `backup:health-check` | Run health checks on restored backup |
-| `scryba:backup-health-check` | Run custom health checks |
+| `klytron:backup-health-check` | Run custom health checks |
 
 ### Command Options
 
@@ -209,7 +209,7 @@ The MIT License (MIT). Please see [License File](LICENSE.md) for more informatio
 - 📧 **Email**: contact@michael.laweitech.com
 - 🌐 **Website**: https://michael.laweitech.com/
 - ☕ **Buy me a coffee**: https://michael.laweitech.com/buy-me-a-coffee
-- 🐛 **Issues**: [GitHub Issues](https://github.com/scryba/laravel-backup-complete-restore/issues)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/klytron/laravel-backup-complete-restore/issues)
 
 ---
 

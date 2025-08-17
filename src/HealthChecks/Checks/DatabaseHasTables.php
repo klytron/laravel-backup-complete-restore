@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks;
+namespace Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks;
 
 use Wnx\LaravelBackupRestore\HealthChecks\Checks\DatabaseHasTables as WnxDatabaseHasTables;
 
@@ -12,7 +12,7 @@ use Wnx\LaravelBackupRestore\HealthChecks\Checks\DatabaseHasTables as WnxDatabas
  * This class extends the Wnx Laravel Backup Restore DatabaseHasTables check
  * to provide the same functionality while being part of our package.
  * 
- * @package Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks
+ * @package Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks
  */
 class DatabaseHasTables extends WnxDatabaseHasTables
 {

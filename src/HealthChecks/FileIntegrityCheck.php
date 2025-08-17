@@ -1,6 +1,6 @@
 <?php
 
-namespace Scryba\LaravelBackupCompleteRestore\HealthChecks;
+namespace Klytron\LaravelBackupCompleteRestore\HealthChecks;
 
 use Illuminate\Support\Facades\File;
 

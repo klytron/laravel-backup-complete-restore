@@ -1,9 +1,9 @@
 <?php
 
-namespace Scryba\LaravelBackupCompleteRestore\Tests;
+namespace Klytron\LaravelBackupCompleteRestore\Tests;
 
 use Orchestra\Testbench\TestCase as Orchestra;
-use Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider;
+use Klytron\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider;
 
 class TestCase extends Orchestra
 {

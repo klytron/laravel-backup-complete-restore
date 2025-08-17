@@ -1,10 +1,10 @@
 <?php
 
-namespace Scryba\LaravelBackupCompleteRestore;
+namespace Klytron\LaravelBackupCompleteRestore;
 
 use Illuminate\Support\ServiceProvider;
-use Scryba\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
-use Scryba\LaravelBackupCompleteRestore\Commands\ScrybaBackupHealthCheckCommand;
+use Klytron\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
+use Klytron\LaravelBackupCompleteRestore\Commands\KlytronBackupHealthCheckCommand;
 
 class BackupCompleteRestoreServiceProvider extends ServiceProvider
 {
@@ -35,7 +35,7 @@ class BackupCompleteRestoreServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 BackupCompleteRestoreCommand::class,
-                ScrybaBackupHealthCheckCommand::class,
+                KlytronBackupHealthCheckCommand::class,
             ]);
 
             // Publish configuration

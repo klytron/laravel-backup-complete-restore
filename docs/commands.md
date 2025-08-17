@@ -251,12 +251,12 @@ php artisan backup:health-check
 
 ## Custom Health Check Command
 
-### `scryba:backup-health-check`
+### `klytron:backup-health-check`
 
 Run custom health checks specific to your application:
 
 ```bash
-php artisan scryba:backup-health-check
+php artisan klytron:backup-health-check
 ```
 
 This command uses your custom health check configuration from `config/backup-complete-restore.php`.

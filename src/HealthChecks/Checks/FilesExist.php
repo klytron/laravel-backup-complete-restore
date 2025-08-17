@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks;
+namespace Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks;
 
 use Wnx\LaravelBackupRestore\HealthChecks\Checks\FilesExist as WnxFilesExist;
 
@@ -12,7 +12,7 @@ use Wnx\LaravelBackupRestore\HealthChecks\Checks\FilesExist as WnxFilesExist;
  * This class extends the Wnx Laravel Backup Restore FilesExist check
  * to provide the same functionality while being part of our package.
  * 
- * @package Scryba\LaravelBackupCompleteRestore\HealthChecks\Checks
+ * @package Klytron\LaravelBackupCompleteRestore\HealthChecks\Checks
  */
 class FilesExist extends WnxFilesExist
 {
@@ -31,4 +31,4 @@ class FilesExist extends WnxFilesExist
     {
         return 'Verifies that critical files exist after restoration.';
     }
-} 
+}

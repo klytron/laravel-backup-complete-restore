@@ -8,22 +8,22 @@ This guide covers common issues you may encounter when using the Laravel Backup 
 
 ### Package Not Found
 
-**Problem:** `composer require scryba/laravel-backup-complete-restore` fails.
+**Problem:** `composer require klytron/laravel-backup-complete-restore` fails.
 
 **Solutions:**
 1. Check if the package is available on Packagist:
    ```bash
-   composer search scryba/laravel-backup-complete-restore
+   composer search klytron/laravel-backup-complete-restore
    ```
 
 2. Ensure you have the correct repository configured:
    ```bash
-   composer config repositories.scryba vcs https://github.com/scryba/laravel-backup-complete-restore
+   composer config repositories.klytron vcs https://github.com/klytron/laravel-backup-complete-restore
    ```
 
 3. Try installing with the minimum stability:
    ```bash
-   composer require scryba/laravel-backup-complete-restore --prefer-stable
+   composer require klytron/laravel-backup-complete-restore --prefer-stable
    ```
 
 ### Command Not Found
@@ -41,13 +41,13 @@ This guide covers common issues you may encounter when using the Laravel Backup 
    ```php
    'providers' => [
        // ...
-       Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider::class,
+       Klytron\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider::class,
    ],
    ```
 
 3. Verify the package is properly installed:
    ```bash
-   composer show scryba/laravel-backup-complete-restore
+   composer show klytron/laravel-backup-complete-restore
    ```
 
 ## Configuration Issues
@@ -59,12 +59,12 @@ This guide covers common issues you may encounter when using the Laravel Backup 
 **Solutions:**
 1. Publish the configuration:
    ```bash
-   php artisan vendor:publish --provider="Scryba\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
+   php artisan vendor:publish --provider="Klytron\LaravelBackupCompleteRestore\BackupCompleteRestoreServiceProvider"
    ```
 
 2. Check if the file exists in the vendor directory:
    ```bash
-   ls vendor/scryba/laravel-backup-complete-restore/config/
+   ls vendor/klytron/laravel-backup-complete-restore/config/
    ```
 
 ### Configuration Errors

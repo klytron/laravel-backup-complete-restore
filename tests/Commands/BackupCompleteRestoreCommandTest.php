@@ -1,9 +1,9 @@
 <?php
 
-namespace Scryba\LaravelBackupCompleteRestore\Tests\Commands;
+namespace Klytron\LaravelBackupCompleteRestore\Tests\Commands;
 
-use Scryba\LaravelBackupCompleteRestore\Tests\TestCase;
-use Scryba\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
+use Klytron\LaravelBackupCompleteRestore\Tests\TestCase;
+use Klytron\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
 
 class BackupCompleteRestoreCommandTest extends TestCase
 {
