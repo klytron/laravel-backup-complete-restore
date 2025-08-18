@@ -1,7 +1,13 @@
 {
   "name": "klytron/laravel-backup-complete-restore",
   "description": "Complete backup restoration for Spatie Laravel Backup - restores both database and files to their exact locations with consolidated configuration and internal health checks",
+  "version": "1.5.2",
   "type": "library",
+  "homepage": "https://github.com/klytron/laravel-backup-complete-restore",
+  "support": {
+    "issues": "https://github.com/klytron/laravel-backup-complete-restore/issues",
+    "source": "https://github.com/klytron/laravel-backup-complete-restore"
+  },
   "license": "MIT",
   "keywords": [
     "laravel",
@@ -58,7 +64,6 @@
     }
   },
   "minimum-stability": "stable",
-  "version": "1.4.3",
   "prefer-stable": true,
   "config": {
     "sort-packages": true
