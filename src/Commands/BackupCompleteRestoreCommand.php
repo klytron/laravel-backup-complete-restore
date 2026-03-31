@@ -204,24 +204,7 @@ class BackupCompleteRestoreCommand extends Command
         }
         
         // Check if backup requires password
-        $password = env('BACKUP_ARCHIVE_PASSWORD');
-        if (!$password) {
-            // Try alternative methods to get the password
-            $password = config('backup.backup.password');
-        }
-        if (!$password) {
-            // Try reading directly from .env file
-            $envPath = base_path('.env');
-            if (file_exists($envPath)) {
-                $envContent = file_get_contents($envPath);
-                if (preg_match('/BACKUP_ARCHIVE_PASSWORD=(.+)/', $envContent, $matches)) {
-                    $password = trim($matches[1]);
-                    // Remove quotes if present
-                    $password = trim($password, '"\'');
-                }
-            }
-        }
-        
+        $password = $this->getBackupPassword();
         if ($password) {
             $zip->setPassword($password);
             $this->info('🔐 Using configured backup password');
@@ -229,7 +212,7 @@ class BackupCompleteRestoreCommand extends Command
             $this->warn('⚠️  No backup password found - trying without password');
         }
         
-                    if ($zip->extractTo($tempDir) === TRUE) {
+        if ($zip->extractTo($tempDir) === TRUE) {
                 $zip->close();
                 
                 // Remove the zip file
@@ -286,24 +269,7 @@ class BackupCompleteRestoreCommand extends Command
             }
             
             // Check if backup requires password
-            $password = env('BACKUP_ARCHIVE_PASSWORD');
-            if (!$password) {
-                // Try alternative methods to get the password
-                $password = config('backup.backup.password');
-            }
-            if (!$password) {
-                // Try reading directly from .env file
-                $envPath = base_path('.env');
-                if (file_exists($envPath)) {
-                    $envContent = file_get_contents($envPath);
-                    if (preg_match('/BACKUP_ARCHIVE_PASSWORD=(.+)/', $envContent, $matches)) {
-                        $password = trim($matches[1]);
-                        // Remove quotes if present
-                        $password = trim($password, '"\'');
-                    }
-                }
-            }
-            
+            $password = $this->getBackupPassword();
             if ($password) {
                 $zip->setPassword($password);
                 $this->info('🔐 Using configured backup password');
@@ -728,6 +694,44 @@ class BackupCompleteRestoreCommand extends Command
         return round($bytes, $precision) . ' ' . $units[$i];
     }
 
+    /**
+     * Get backup password from various sources.
+     * Checks env, config, and .env file in order.
+     *
+     * @return string|null The password or null if not found
+     */
+    private function getBackupPassword()
+    {
+        // Try env first
+        $password = env('BACKUP_ARCHIVE_PASSWORD');
+        if ($password) {
+            return $password;
+        }
+
+        // Try config
+        $password = config('backup.backup.password');
+        if ($password) {
+            return $password;
+        }
+
+        // Try reading directly from .env file (for cases where env is cached)
+        $envPath = base_path('.env');
+        if (file_exists($envPath)) {
+            $envContent = file_get_contents($envPath);
+            // Use [^\r\n]+ to stop at end of line, preventing grabbing rest of file
+            if (preg_match('/BACKUP_ARCHIVE_PASSWORD=([^\r\n]+)/', $envContent, $matches)) {
+                $password = trim($matches[1]);
+                // Remove quotes if present
+                $password = trim($password, '"\'');
+                if (!empty($password)) {
+                    return $password;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private function dropAllTables()
     {
         try {
@@ -750,7 +754,8 @@ class BackupCompleteRestoreCommand extends Command
             
             foreach ($tableNames as $table) {
                 $this->line("🗑️  Dropping table: {$table}");
-                $db->statement("DROP TABLE IF EXISTS `{$table}`");
+                $escapedTable = str_replace('`', '``', $table); // Escape backticks in table name
+                $db->statement("DROP TABLE IF EXISTS `{$escapedTable}`");
             }
             
             // Re-enable foreign key checks
@@ -790,7 +795,7 @@ class BackupCompleteRestoreCommand extends Command
             }
             
             // Check if backup requires password
-            $password = env('BACKUP_ARCHIVE_PASSWORD');
+            $password = $this->getBackupPassword();
             if ($password) {
                 $zip->setPassword($password);
             }
@@ -865,56 +870,283 @@ class BackupCompleteRestoreCommand extends Command
             $this->info("📊 Importing to {$connection} database...");
             $this->info("📊 Database: {$config['database']} on {$config['host']}:{$config['port']}");
             
-            // Read the SQL file
-            $sql = File::get($dumpFile);
-            if (!$sql) {
-                $this->error('❌ Failed to read SQL dump file');
-                return false;
-            }
-            
-            $this->info("📊 SQL file size: " . $this->formatBytes(strlen($sql)));
-            
-            // Split into individual statements
-            $statements = array_filter(array_map('trim', explode(';', $sql)));
+            // Check file size to determine reading method
+            $fileSize = File::size($dumpFile);
+            $this->info("📊 SQL file size: " . $this->formatBytes($fileSize));
             
             $db = DB::connection($connection);
-            $total = count($statements);
-            $current = 0;
+            $totalStatements = 0;
+            $processedStatements = 0;
             $errors = 0;
             
-            $this->info("📊 Processing {$total} SQL statements...");
+            // Use streaming for files larger than 10MB
+            $useStreaming = $fileSize > 10 * 1024 * 1024;
             
-            foreach ($statements as $statement) {
-                if (empty($statement)) continue;
-                
-                $current++;
-                if ($current % 50 == 0) {
-                    $this->line("⏳ Processing statement {$current}/{$total}... (errors: {$errors})");
+            if ($useStreaming) {
+                $this->info("📊 Using streaming mode for large file...");
+                $result = $this->importSqlStreaming($dumpFile, $db);
+                $totalStatements = $result['total'];
+                $errors = $result['errors'];
+                $processedStatements = $totalStatements - $errors;
+            } else {
+                // Read the entire SQL file for smaller files
+                $sql = File::get($dumpFile);
+                if (!$sql) {
+                    $this->error('❌ Failed to read SQL dump file');
+                    return false;
                 }
                 
-                try {
-                    $db->unprepared($statement);
-                } catch (Exception $e) {
-                    $errors++;
-                    if ($errors <= 5) { // Only show first 5 errors
-                        $this->warn("⚠️  Statement {$current} failed: " . substr($statement, 0, 100) . "...");
-                        $this->warn("   Error: " . $e->getMessage());
+                // Parse SQL statements respecting string literals and escaped characters
+                $statements = $this->parseSqlStatements($sql);
+                
+                if (empty($statements)) {
+                    $this->error('❌ No valid SQL statements found in dump file');
+                    return false;
+                }
+                
+                $totalStatements = count($statements);
+                $this->info("📊 Processing {$totalStatements} SQL statements...");
+                
+                foreach ($statements as $statement) {
+                    if (empty($statement)) continue;
+                    
+                    $processedStatements++;
+                    if ($processedStatements % 50 == 0) {
+                        $this->line("⏳ Processing statement {$processedStatements}/{$totalStatements}... (errors: {$errors})");
                     }
-                    // Continue with other statements
+                    
+                    try {
+                        $db->unprepared($statement);
+                    } catch (Exception $e) {
+                        $errors++;
+                        if ($errors <= 5) { // Only show first 5 errors
+                            $this->warn("⚠️  Statement {$processedStatements} failed: " . substr($statement, 0, 100) . "...");
+                            $this->warn("   Error: " . $e->getMessage());
+                        }
+                        // Continue with other statements
+                    }
                 }
             }
             
             if ($errors > 0) {
-                $this->warn("⚠️  Database import completed with {$errors} errors out of {$total} statements");
+                $this->warn("⚠️  Database import completed with {$errors} errors out of {$totalStatements} statements");
             } else {
-                $this->info("✅ Database import completed successfully ({$total} statements processed)");
+                $this->info("✅ Database import completed successfully ({$totalStatements} statements processed)");
             }
             
-            return $errors < $total; // Return true if at least some statements succeeded
+            return $errors < $totalStatements; // Return true if at least some statements succeeded
             
         } catch (Exception $e) {
             $this->error('❌ Database import failed: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Import large SQL files using streaming/chunked reading.
+     * This prevents memory exhaustion with very large dumps.
+     *
+     * @param string $dumpFile Path to the SQL dump file
+     * @param mixed $db Database connection
+     * @return array Array with 'total' and 'errors' counts
+     */
+    private function importSqlStreaming($dumpFile, $db)
+    {
+        $handle = fopen($dumpFile, 'r');
+        if (!$handle) {
+            throw new Exception('Failed to open SQL file for streaming');
+        }
+
+        $buffer = '';
+        $total = 0;
+        $errors = 0;
+        $chunkSize = 1024 * 1024; // 1MB chunks
+
+        $this->info("📊 Processing SQL file in chunks...");
+
+        while (!feof($handle)) {
+            $chunk = fread($handle, $chunkSize);
+            $buffer .= $chunk;
+
+            // Process complete statements from buffer
+            $result = $this->processBuffer($buffer, $db);
+            $total += $result['processed'];
+            $errors += $result['errors'];
+            $buffer = $result['remainder'];
+
+            // Progress update every 50 statements
+            if ($total % 50 == 0) {
+                $this->line("⏳ Processed {$total} statements... (errors: {$errors})");
+            }
+        }
+
+        // Process any remaining statements in buffer
+        if (!empty($buffer)) {
+            $result = $this->processBuffer($buffer . ';', $db); // Add semicolon to force final statement
+            $total += $result['processed'];
+            $errors += $result['errors'];
+        }
+
+        fclose($handle);
+
+        return ['total' => $total, 'errors' => $errors];
+    }
+
+    /**
+     * Process SQL buffer and extract complete statements.
+     *
+     * @param string $buffer SQL buffer content
+     * @param mixed $db Database connection
+     * @return array Array with 'processed', 'errors', and 'remainder'
+     */
+    private function processBuffer(&$buffer, $db)
+    {
+        $processed = 0;
+        $errors = 0;
+        $remainder = '';
+
+        // Parse statements from buffer
+        $statements = $this->parseSqlStatements($buffer);
+
+        if (empty($statements)) {
+            return ['processed' => 0, 'errors' => 0, 'remainder' => $buffer];
+        }
+
+        // Check if the last statement might be incomplete (no semicolon at end)
+        $lastStatement = end($statements);
+        $bufferEndsWithSemicolon = substr(rtrim($buffer), -1) === ';';
+
+        // If buffer doesn't end with semicolon, the last statement is likely incomplete
+        if (!$bufferEndsWithSemicolon && count($statements) > 0) {
+            $remainder = array_pop($statements);
+        }
+
+        // Execute complete statements
+        foreach ($statements as $statement) {
+            if (empty($statement)) continue;
+
+            $processed++;
+
+            try {
+                $db->unprepared($statement);
+            } catch (Exception $e) {
+                $errors++;
+                if ($errors <= 5) {
+                    $this->warn("⚠️  Statement failed: " . substr($statement, 0, 100) . "...");
+                    $this->warn("   Error: " . $e->getMessage());
+                }
+            }
+        }
+
+        return ['processed' => $processed, 'errors' => $errors, 'remainder' => $remainder];
+    }
+
+    /**
+     * Parse SQL statements respecting string literals, escaped characters, and comments.
+     * This prevents issues with semicolons inside string data.
+     *
+     * @param string $sql The SQL dump content
+     * @return array Array of individual SQL statements
+     */
+    private function parseSqlStatements($sql)
+    {
+        $statements = [];
+        $currentStatement = '';
+        $length = strlen($sql);
+        $inString = false;
+        $stringChar = null;
+        $escapeNext = false;
+        $inComment = false;
+        $commentType = null;
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $sql[$i];
+            $nextChar = $i + 1 < $length ? $sql[$i + 1] : null;
+
+            // Handle escape sequences
+            if ($escapeNext) {
+                $currentStatement .= $char;
+                $escapeNext = false;
+                continue;
+            }
+
+            // Check for escape character
+            if ($char === '\\' && $inString) {
+                $currentStatement .= $char;
+                $escapeNext = true;
+                continue;
+            }
+
+            // Handle SQL comments (-- and /* */)
+            if (!$inString && !$inComment) {
+                // Single line comment --
+                if ($char === '-' && $nextChar === '-') {
+                    $inComment = true;
+                    $commentType = 'single';
+                    $currentStatement .= $char;
+                    continue;
+                }
+                // Multi-line comment /*
+                if ($char === '/' && $nextChar === '*') {
+                    $inComment = true;
+                    $commentType = 'multi';
+                    $currentStatement .= $char;
+                    continue;
+                }
+            } elseif ($inComment) {
+                $currentStatement .= $char;
+                if ($commentType === 'single' && $char === "\n") {
+                    $inComment = false;
+                    $commentType = null;
+                } elseif ($commentType === 'multi' && $char === '*' && $nextChar === '/') {
+                    $currentStatement .= $nextChar;
+                    $i++; // Skip the /
+                    $inComment = false;
+                    $commentType = null;
+                }
+                continue;
+            }
+
+            // Handle string literals (both single and double quotes)
+            if (!$inComment) {
+                if ($char === "'" || $char === '"') {
+                    if (!$inString) {
+                        $inString = true;
+                        $stringChar = $char;
+                    } elseif ($stringChar === $char) {
+                        // Check for doubled quotes (SQL escaping style: '')
+                        if ($nextChar === $char) {
+                            $currentStatement .= $char . $nextChar;
+                            $i++; // Skip next quote
+                            continue;
+                        }
+                        $inString = false;
+                        $stringChar = null;
+                    }
+                    $currentStatement .= $char;
+                    continue;
+                }
+            }
+
+            // Statement terminator (semicolon outside of strings and comments)
+            if ($char === ';' && !$inString && !$inComment) {
+                $trimmed = trim($currentStatement);
+                if (!empty($trimmed)) {
+                    $statements[] = $trimmed;
+                }
+                $currentStatement = '';
+                continue;
+            }
+
+            $currentStatement .= $char;
+        }
+
+        // Add final statement if any
+        $trimmed = trim($currentStatement);
+        if (!empty($trimmed)) {
+            $statements[] = $trimmed;
+        }
+
+        return $statements;
     }
 }

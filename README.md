@@ -53,7 +53,7 @@ This package requires [Spatie Laravel Backup](https://github.com/spatie/laravel-
 ### Required Dependencies
 
 - **PHP**: 8.1 or higher
-- **Laravel**: 10.0, 11.0, or 12.0
+- **Laravel**: 10.0, 11.0, 12.0, or 13.0
 - **Spatie Laravel Backup**: 8.0 or higher
 - **WNX Laravel Backup Restore**: 1.6 or higher
 
