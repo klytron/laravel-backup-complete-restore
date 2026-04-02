@@ -1,7 +1,6 @@
 {
   "name": "klytron/laravel-backup-complete-restore",
   "description": "Complete backup restoration for Spatie Laravel Backup - restores both database and files to their exact locations with consolidated configuration and internal health checks (supports Laravel 10-13)",
-  "version": "1.6.0",
   "type": "library",
   "homepage": "https://github.com/klytron/laravel-backup-complete-restore",
   "support": {
