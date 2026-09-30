@@ -4,6 +4,7 @@ namespace Klytron\LaravelBackupCompleteRestore\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class KlytronBackupHealthCheckCommand extends Command
@@ -134,8 +135,31 @@ class KlytronBackupHealthCheckCommand extends Command
     private function checkDatabaseTables(): bool
     {
         try {
-            $tables = DB::select('SHOW TABLES');
-            $tableCount = count($tables);
+            $connection = config('database.default');
+            $driver = config("database.connections.{$connection}.driver", 'mysql');
+
+            if (class_exists(Schema::class) && method_exists(Schema::class, 'getTables')) {
+                $tables = Schema::getTables();
+                $tableCount = count($tables);
+            } else {
+                switch ($driver) {
+                    case 'sqlite':
+                        $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+                        break;
+                    case 'pgsql':
+                        $tables = DB::select("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')");
+                        break;
+                    case 'sqlsrv':
+                        $tables = DB::select("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'");
+                        break;
+                    case 'mysql':
+                    case 'mariadb':
+                    default:
+                        $tables = DB::select('SHOW TABLES');
+                        break;
+                }
+                $tableCount = count($tables);
+            }
             
             if ($tableCount === 0) {
                 $this->warn("⚠️  No database tables found");
@@ -145,6 +169,7 @@ class KlytronBackupHealthCheckCommand extends Command
             $this->info("Found $tableCount database tables");
             return true;
         } catch (\Exception $e) {
+            $this->warn("⚠️  Failed to check database tables: " . $e->getMessage());
             return false;
         }
     }
@@ -154,19 +179,25 @@ class KlytronBackupHealthCheckCommand extends Command
      */
     private function checkApplicationConfiguration(): bool
     {
+        // Standard Laravel config keys with environment variable fallbacks
         $requiredConfigs = [
-            'APP_NAME',
-            'APP_ENV',
-            'APP_KEY',
-            'APP_DEBUG',
+            'app.name' => 'APP_NAME',
+            'app.env' => 'APP_ENV',
+            'app.key' => 'APP_KEY',
         ];
         
         $missing = [];
         
-        foreach ($requiredConfigs as $config) {
-            if (config($config) === null) {
-                $missing[] = $config;
+        foreach ($requiredConfigs as $configKey => $envFallback) {
+            $value = config($configKey) ?? config($envFallback) ?? env($envFallback);
+            if ($value === null || $value === '') {
+                $missing[] = $configKey;
             }
+        }
+
+        // Check app.debug (boolean, can be false but shouldn't be null)
+        if (config('app.debug') === null && config('APP_DEBUG') === null && env('APP_DEBUG') === null) {
+            $missing[] = 'app.debug';
         }
         
         if (!empty($missing)) {

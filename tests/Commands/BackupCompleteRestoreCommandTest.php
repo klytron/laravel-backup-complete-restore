@@ -163,4 +163,33 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString("'Title with; semicolon'", $statements[0]);
         $this->assertStringContainsString("'Another; test'", $statements[1]);
     }
+
+    /** @test */
+    public function it_drops_all_tables_on_sqlite()
+    {
+        \Illuminate\Support\Facades\DB::statement('CREATE TABLE test_users (id INTEGER PRIMARY KEY, name TEXT)');
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('test_users'));
+
+        $command = new BackupCompleteRestoreCommand();
+        $command->setLaravel($this->app);
+
+        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $output = new \Symfony\Component\Console\Output\BufferedOutput();
+        $ref = new ReflectionClass($command);
+        $inputProp = $ref->getProperty('input');
+        $inputProp->setAccessible(true);
+        $inputProp->setValue($command, $input);
+
+        $outputProp = $ref->getProperty('output');
+        $outputProp->setAccessible(true);
+        $outputProp->setValue($command, new \Illuminate\Console\OutputStyle($input, $output));
+
+        $method = $ref->getMethod('dropAllTables');
+        $method->setAccessible(true);
+        $result = $method->invoke($command);
+
+        $this->assertTrue($result);
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasTable('test_users'));
+    }
 }
+

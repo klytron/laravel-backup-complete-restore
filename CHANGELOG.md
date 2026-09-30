@@ -5,6 +5,42 @@ All notable changes to `laravel-backup-complete-restore` will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Multi-Driver Database Support**: Driver-aware `dropAllTables()` using `Schema::connection()->dropAllTables()` with robust fallbacks for SQLite (`PRAGMA foreign_keys = OFF`), PostgreSQL (`CASCADE`), and MySQL/MariaDB.
+- **Multi-Driver Health Checks**: `checkDatabaseTables()` now natively supports SQLite, PostgreSQL, SQL Server, and MySQL via `Schema::getTables()` and driver catalog queries.
+- **Resource Limit Controls**: Configured `restoration.max_execution_time` and `restoration.memory_limit` are now applied during restoration.
+- **Post-Restore Actions**: Automatically executes post-restore health checks and optional cache clearing (`cache:clear`, `config:clear`) when configured.
+- **Repository Hygiene**: Added `.gitattributes` to exclude tests and development assets from distribution packages, and added standard `.gitignore`.
+
+### Changed
+- **Single-Pass Archive Extraction**: Refactored `handle()` and `extractBackup()` to download and extract the backup archive once via memory-efficient PSR-7/stream copying, eliminating redundant downloads for database and file restoration.
+- **Guaranteed Temp Directory Cleanup**: Wrapped temporary extraction directories in `try ... finally` blocks to prevent orphaned `temp-restore-*` and `temp-check-*` directories on aborts or exceptions.
+- **Widen Dependencies**: Widened `spatie/laravel-backup` constraint to `^8.0|^9.0|^10.0` for full Laravel 13 compatibility.
+- **Pruned Dead Configuration**: Removed unsupported imaginary settings from `config/backup-complete-restore.php` and `config/backup-restore-compatibility.php`, ensuring every config option is functional and documented.
+
+### Fixed
+- **App Configuration Health Check**: Corrected config key lookups from `APP_NAME` env keys to standard Laravel `app.name`, `app.env`, `app.key`, `app.debug` configuration paths with env fallbacks.
+- **SQLite Connection Info Crash**: Null-coalesced host and port when logging database connection info to prevent undefined array key warnings on SQLite.
+
+## [1.6.1] - 2026-03-31
+
+### Fixed
+- Improved file mapping resolution for nested storage paths.
+
+## [1.6.0] - 2026-03-31
+
+### Added
+- Support for Laravel 13.
+- Improved database dump parsing for large SQL files with streaming support.
+
+## [1.5.0] - 2025-08-01
+
+### Added
+- Health check commands with consolidated reporting.
+- Enhanced password decryption support for zip archives.
+
 ## [1.4.0] - 2025-01-15
 
 ### Added

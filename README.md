@@ -10,12 +10,14 @@ A comprehensive Laravel package for complete backup restoration, including both 
 ## ✨ Features
 
 - 🔄 **Complete Restoration**: Restore both database and files from Spatie Laravel Backup archives
-- 🎯 **Consolidated Configuration**: Single configuration file that leverages existing Laravel config
-- 🛡️ **Internal Health Checks**: Self-contained health check classes extending dependency packages
+- ⚡ **Optimized Single Extraction**: Downloads and extracts archive once with memory-safe streaming, avoiding double-download overhead
+- 🗄️ **Multi-Driver Database Support**: First-class support for MySQL, MariaDB, PostgreSQL, and SQLite with automated schema reset
+- 🎯 **Consolidated Configuration**: Clean, single configuration file that leverages existing Laravel config
+- 🛡️ **Internal Health Checks**: Self-contained health checks for database tables, critical files, and app configuration
 - 🔧 **Config System Integration**: Automatic compatibility with `wnx/laravel-backup-restore`
 - 📁 **Smart File Mappings**: Intelligent mapping of container paths to local filesystem
 - 🚀 **Multiple Storage Support**: Works with local, S3, Google Drive, and other storage disks
-- 🔒 **Safety Features**: Backup existing files, confirmation prompts, and error handling
+- 🔒 **Safety Features**: Safe extraction cleanup (`try ... finally`), confirmation prompts, and error handling
 - 📊 **Progress Tracking**: Real-time progress indicators and detailed logging
 - 🎨 **Beautiful CLI**: Colorful, emoji-rich command-line interface
 
@@ -44,6 +46,9 @@ php artisan backup:restore-complete --database-only
 
 # Restore files only
 php artisan backup:restore-complete --files-only
+
+# Restore with automated database reset (drops existing tables before import)
+php artisan backup:restore-complete --reset --force
 ```
 
 ## 📋 Prerequisites
@@ -52,10 +57,10 @@ This package requires [Spatie Laravel Backup](https://github.com/spatie/laravel-
 
 ### Required Dependencies
 
-- **PHP**: 8.1 or higher
+- **PHP**: 8.1, 8.2, 8.3, or 8.4
 - **Laravel**: 10.0, 11.0, 12.0, or 13.0
-- **Spatie Laravel Backup**: 8.0 or higher
-- **WNX Laravel Backup Restore**: 1.6 or higher
+- **Spatie Laravel Backup**: 8.0, 9.0, or 10.0
+- **WNX Laravel Backup Restore**: 1.6 or higher (optional, for upstream health check compatibility)
 
 ## 📚 Documentation
 
@@ -107,6 +112,13 @@ return [
                 storage_path('logs'),
             ],
         ],
+    ],
+
+    'restoration' => [
+        'clear_caches' => true,
+        'run_health_checks' => true,
+        'max_execution_time' => 300,
+        'memory_limit' => '512M',
     ],
 ];
 ```
