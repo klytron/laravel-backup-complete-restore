@@ -4,6 +4,7 @@ namespace Klytron\LaravelBackupCompleteRestore;
 
 use Illuminate\Support\ServiceProvider;
 use Klytron\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
+use Klytron\LaravelBackupCompleteRestore\Commands\CleanupRestorationTempCommand;
 use Klytron\LaravelBackupCompleteRestore\Commands\KlytronBackupHealthCheckCommand;
 
 class BackupCompleteRestoreServiceProvider extends ServiceProvider
@@ -35,6 +36,7 @@ class BackupCompleteRestoreServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 BackupCompleteRestoreCommand::class,
+                CleanupRestorationTempCommand::class,
                 KlytronBackupHealthCheckCommand::class,
             ]);
 

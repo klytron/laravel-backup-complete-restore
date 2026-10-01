@@ -110,6 +110,76 @@ Show detailed progress information:
 php artisan backup:restore-complete --verbose
 ```
 
+### Dry Run
+
+Preview what a restore *would* do without restoring anything — archive date,
+entry count, sizes, detected database dumps, and the database/files plan with
+target paths:
+
+```bash
+php artisan backup:restore-complete --backup="2024-01-15-10-30-00.zip" --dry-run
+```
+
+**Output Example:**
+```
+🔍 Dry run — nothing will be restored
+
+📦 Archive: 2024-01-15-10-30-00.zip
+   Date: 2024-01-15 10:30:00
+   Compressed size: 569.20 MB
+   Contents: 1284 entries (1.20 GB uncompressed)
+   Database dumps: db-dumps/sqlite-db.sql
+
+📋 Restore plan:
+   • Database → connection 'sqlite' (1 dump(s))
+   • Storage files → /var/www/html/storage
+   • Public files → /var/www/html/public
+
+💡 Run without --dry-run to perform this restore.
+```
+
+### Debugging Temp Directories
+
+#### Keep Temp (`--keep-temp`)
+Skip temp-dir cleanup (on success *and* failure) and print the kept path for
+debugging:
+
+```bash
+php artisan backup:restore-complete --keep-temp --force
+```
+
+#### Cleanup Janitor (`klytron:backup:cleanup:restoration`)
+
+Purge stale `temp-restore-*` / `temp-check-*` directories left behind by
+aborted or failed restores:
+
+```bash
+# Purge dirs older than 60 minutes (default), with confirmation
+php artisan klytron:backup:cleanup:restoration
+
+# Non-interactive purge of dirs older than a day
+php artisan klytron:backup:cleanup:restoration --force --older-than=1440
+
+# Preview only
+php artisan klytron:backup:cleanup:restoration --dry-run
+```
+
+### SQLite Verification
+
+After every sqlite restore the package runs `PRAGMA integrity_check` on the
+restored database and prints a verification summary line:
+
+```
+✅ SQLite integrity_check: ok
+🔍 SQLite verification: integrity_check=ok, boot probe=skipped
+```
+
+- `--skip-verification` disables the check (also via
+  `restoration.verify_sqlite => false`).
+- `--boot-probe` additionally runs a boot probe: a fresh reconnect plus a
+  trivial query, and the configured `restoration.boot_probe_command` when set
+  (also via `restoration.sqlite_boot_probe => true`).
+
 ## Complete Examples
 
 ### Basic Complete Restore

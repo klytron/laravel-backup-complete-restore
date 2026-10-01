@@ -18,6 +18,10 @@ A comprehensive Laravel package for complete backup restoration, including both 
 - 📁 **Smart File Mappings**: Intelligent mapping of container paths to local filesystem
 - 🚀 **Multiple Storage Support**: Works with local, S3, Google Drive, and other storage disks
 - 🔒 **Safety Features**: Safe extraction cleanup (`try ... finally`), confirmation prompts, and error handling
+- 🔍 **Dry-Run Planning**: Preview archives and restore plans with `--dry-run` before touching anything
+- 📊 **Streamed Progress**: Per-file extraction progress (file count / bytes) for large archives
+- 🧊 **Debuggable Temp Dirs**: Opt-in `--keep-temp` plus the `klytron:backup:cleanup:restoration` janitor for stale dirs
+- ✅ **SQLite Verification**: Post-restore `PRAGMA integrity_check`, optional boot probe, and a verification summary line
 - 📊 **Progress Tracking**: Real-time progress indicators and detailed logging
 - 🎨 **Beautiful CLI**: Colorful, emoji-rich command-line interface
 
@@ -128,12 +132,22 @@ return [
 | Command | Description |
 |---------|-------------|
 | `backup:restore-complete` | Complete backup restoration (database + files) |
+| `klytron:backup:cleanup:restoration` | Purge stale restoration temp directories (`temp-restore-*`, `temp-check-*`) |
 | `backup:health-check` | Run health checks on restored backup |
 | `klytron:backup-health-check` | Run custom health checks |
 
 ### Command Options
 
 ```bash
+# Preview what a restore would do (restores nothing)
+php artisan backup:restore-complete --dry-run --backup="filename.zip"
+
+# Keep the temp extraction dir for debugging (skips cleanup)
+php artisan backup:restore-complete --keep-temp --force
+
+# Purge stale temp dirs left by aborted/failed restores
+php artisan klytron:backup:cleanup:restoration --force
+php artisan klytron:backup:cleanup:restoration --dry-run --older-than=1440
 # List backups
 php artisan backup:restore-complete --list
 
@@ -152,6 +166,10 @@ php artisan backup:restore-complete --reset
 # Safety options
 php artisan backup:restore-complete --force
 php artisan backup:restore-complete --verbose
+
+# Verification options (sqlite)
+php artisan backup:restore-complete --skip-verification
+php artisan backup:restore-complete --boot-probe
 ```
 
 ## 🔄 Integration with Spatie Laravel Backup

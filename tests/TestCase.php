@@ -27,5 +27,7 @@ class TestCase extends Orchestra
             'database' => ':memory:',
             'prefix'   => '',
         ]);
+        // Mirror a real Spatie setup: backup archives live under this app name.
+        config()->set('backup.backup.name', 'TestApp');
     }
 }

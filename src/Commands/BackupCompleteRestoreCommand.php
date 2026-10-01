@@ -26,6 +26,10 @@ class BackupCompleteRestoreCommand extends Command
                             {--database-only : Restore only database}
                             {--files-only : Restore only files}
                             {--list : List available backups}
+                            {--dry-run : List what would be restored without restoring anything}
+                            {--keep-temp : Keep the temporary extraction directory for debugging}
+                            {--skip-verification : Skip post-restore sqlite verification}
+                            {--boot-probe : Run a boot probe after sqlite verification}
                             {--force : Skip confirmation prompts}';
 
     /**
@@ -47,8 +51,8 @@ class BackupCompleteRestoreCommand extends Command
         $this->info('🔄 Complete Backup Restore Tool');
         $this->line('');
 
-        // Safety warnings
-        if (!$this->option('force')) {
+        // Safety warnings (a dry run restores nothing, so no confirmation needed)
+        if (!$this->option('force') && !$this->option('dry-run')) {
             $this->warn('⚠️  WARNING: This will restore your database AND files from backup!');
             $this->warn('⚠️  This operation will overwrite your current data and files.');
             $this->line('');
@@ -63,6 +67,7 @@ class BackupCompleteRestoreCommand extends Command
         $backup = $this->option('backup');
         $databaseOnly = $this->option('database-only');
         $filesOnly = $this->option('files-only');
+        $connection = $this->option('connection') ?: config('database.default');
         $tempDir = null;
 
         // Apply execution time and memory limits if configured
@@ -84,6 +89,11 @@ class BackupCompleteRestoreCommand extends Command
             $this->info("📁 Using backup: " . basename($backupFile));
             $this->line('');
 
+            // Dry run: report what would be restored, restore nothing.
+            if ($this->option('dry-run')) {
+                return $this->dryRun($disk, $backupFile, $connection, $databaseOnly, $filesOnly);
+            }
+
             // Extract backup to temporary location once (shared for DB and files)
             $tempDir = $this->extractBackup($disk, $backupFile);
             if (!$tempDir) {
@@ -101,6 +111,10 @@ class BackupCompleteRestoreCommand extends Command
             if (!$filesOnly && $hasDatabase) {
                 $this->info('🗄️  Restoring database...');
                 if (!$this->restoreDatabaseFromDump($dbFiles[0])) {
+                    $success = false;
+                } elseif (!$this->option('skip-verification')
+                    && !$this->verifySqliteRestore($connection)
+                ) {
                     $success = false;
                 }
             } elseif (!$filesOnly && !$hasDatabase) {
@@ -156,7 +170,11 @@ class BackupCompleteRestoreCommand extends Command
             return 1;
         } finally {
             if ($tempDir && File::exists($tempDir) && config('backup-complete-restore.cleanup_temp_files', true)) {
-                $this->cleanup($tempDir);
+                if ($this->option('keep-temp')) {
+                    $this->line("🧊 Kept temp dir for debugging: {$tempDir}");
+                } else {
+                    $this->cleanup($tempDir);
+                }
             }
         }
     }
@@ -164,6 +182,9 @@ class BackupCompleteRestoreCommand extends Command
     private function findBackupFile($disk, $backup = null)
     {
         $backupName = config('backup.backup.name');
+        if (!$backupName) {
+            return null;
+        }
         $backupPath = $backupName;
 
         if ($backup) {
@@ -263,12 +284,12 @@ class BackupCompleteRestoreCommand extends Command
                 $this->warn('⚠️  No backup password found - trying without password');
             }
             
-            if ($zip->extractTo($tempDir) === TRUE) {
+            if ($this->extractWithProgress($zip, $tempDir)) {
                 $zip->close();
                 
                 // Remove the zip file to save disk space
                 File::delete($localBackupPath);
-                
+
                 $this->info('✅ Backup extracted successfully');
                 
                 // Debug: Show what's in the extracted backup
@@ -278,7 +299,6 @@ class BackupCompleteRestoreCommand extends Command
                 return $tempDir;
             } else {
                 $zip->close();
-                $this->error('❌ Failed to extract backup ZIP file (check password if encrypted)');
                 if (File::exists($tempDir)) {
                     File::deleteDirectory($tempDir);
                 }
@@ -290,6 +310,223 @@ class BackupCompleteRestoreCommand extends Command
                 File::deleteDirectory($tempDir);
             }
             return null;
+        }
+    }
+
+    /**
+     * Extract every archive entry one at a time, streaming progress output
+     * (file count / bytes) so long restores don't look hung.
+     *
+     * @param ZipArchive $zip Opened archive (password already set if needed)
+     * @param string $tempDir Extraction target directory
+     * @return bool True when at least one entry extracted and none failed
+     */
+    private function extractWithProgress(ZipArchive $zip, string $tempDir): bool
+    {
+        $total = $zip->numFiles;
+
+        if ($total === 0) {
+            $this->warn('⚠️  Backup archive is empty');
+            return true;
+        }
+
+        $this->info("📦 Extracting {$total} files...");
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $bytes = 0;
+        $failed = 0;
+
+        for ($i = 0; $i < $total; $i++) {
+            $name = $zip->getNameIndex($i);
+            $stat = $zip->statIndex($i);
+
+            if ($name === false || $zip->extractTo($tempDir, $name) !== true) {
+                $failed++;
+            } else {
+                $bytes += $stat['size'] ?? 0;
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->line('');
+        $this->info("📊 Extracted " . ($total - $failed) . "/{$total} files (" . $this->formatBytes($bytes) . ")");
+
+        if ($failed > 0) {
+            $this->error("❌ Failed to extract {$failed} file(s) (check password if encrypted)");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Dry run: download the archive, inspect it, and report what a restore
+     * WOULD do (targets, database/files plan) without restoring anything.
+     */
+    private function dryRun(string $disk, string $backupFile, string $connection, bool $databaseOnly, bool $filesOnly): int
+    {
+        $this->info('🔍 Dry run — nothing will be restored');
+        $this->line('');
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'dry-run-backup-') . '.zip';
+
+        try {
+            $readStream = Storage::disk($disk)->readStream($backupFile);
+            if ($readStream) {
+                $writeStream = fopen($tmpPath, 'wb');
+                stream_copy_to_stream($readStream, $writeStream);
+                fclose($readStream);
+                fclose($writeStream);
+            } else {
+                $content = Storage::disk($disk)->get($backupFile);
+                if (!$content) {
+                    $this->error('❌ Failed to download backup file from ' . $disk . ' disk');
+                    return 1;
+                }
+                File::put($tmpPath, $content);
+            }
+
+            $zip = new ZipArchive;
+            if ($zip->open($tmpPath) !== true) {
+                $this->error('❌ Failed to open backup ZIP file');
+                return 1;
+            }
+
+            $password = $this->getBackupPassword();
+            if ($password) {
+                $zip->setPassword($password);
+            }
+
+            $entries = $zip->numFiles;
+            $uncompressed = 0;
+            $dbDumps = [];
+            $hasStorage = false;
+            $hasPublic = false;
+
+            for ($i = 0; $i < $entries; $i++) {
+                $name = (string) $zip->getNameIndex($i);
+                $stat = $zip->statIndex($i);
+                $uncompressed += $stat['size'] ?? 0;
+
+                if (str_ends_with($name, '.sql') || str_contains($name, 'db-dumps/')) {
+                    $dbDumps[] = $name;
+                }
+                if (!$hasStorage && str_contains($name, 'storage/')) {
+                    $hasStorage = true;
+                }
+                if (!$hasPublic && str_contains($name, 'public/')) {
+                    $hasPublic = true;
+                }
+            }
+
+            $zip->close();
+
+            $date = date('Y-m-d H:i:s', Storage::disk($disk)->lastModified($backupFile));
+
+            $this->info('📦 Archive: ' . basename($backupFile));
+            $this->line("   Date: {$date}");
+            $this->line('   Compressed size: ' . $this->formatBytes(File::size($tmpPath)));
+            $this->line("   Contents: {$entries} entries (" . $this->formatBytes($uncompressed) . ' uncompressed)');
+            $this->line('   Database dumps: ' . (empty($dbDumps) ? 'none' : implode(', ', array_slice($dbDumps, 0, 10))));
+            $this->line('');
+
+            $this->info('📋 Restore plan:');
+            if (!$filesOnly && !empty($dbDumps)) {
+                $this->line("   • Database → connection '{$connection}' (" . count($dbDumps) . ' dump(s))');
+            } elseif (!$filesOnly) {
+                $this->line('   • Database → skipped (no dumps in archive)');
+            }
+            if (!$databaseOnly && $hasStorage) {
+                $this->line('   • Storage files → ' . storage_path());
+            } elseif (!$databaseOnly && !$hasPublic) {
+                $this->line('   • Files → skipped (no storage/public dirs detected in archive)');
+            }
+            if (!$databaseOnly && $hasPublic) {
+                $this->line('   • Public files → ' . public_path());
+            }
+            $this->line('');
+            $this->info('💡 Run without --dry-run to perform this restore.');
+
+            return 0;
+        } catch (Exception $e) {
+            $this->error('❌ Dry run failed: ' . $e->getMessage());
+            return 1;
+        } finally {
+            if (File::exists($tmpPath)) {
+                File::delete($tmpPath);
+            }
+        }
+    }
+
+    /**
+     * Post-restore verification for sqlite drivers: the restore is a file
+     * replace, so run PRAGMA integrity_check on the restored file, an
+     * optional boot probe, and print a verification summary line.
+     *
+     * Non-sqlite drivers have nothing file-level to check: no-op success.
+     */
+    private function verifySqliteRestore(string $connection): bool
+    {
+        $config = config("database.connections.{$connection}");
+
+        if (($config['driver'] ?? null) !== 'sqlite') {
+            return true;
+        }
+
+        if (!config('backup-complete-restore.restoration.verify_sqlite', true)) {
+            return true;
+        }
+
+        $this->info('🔍 Verifying sqlite restore...');
+
+        try {
+            $db = DB::connection($connection);
+            $rows = $db->select('PRAGMA integrity_check');
+            $values = array_map(
+                fn ($row) => strtolower(trim((string) (array_values((array) $row)[0] ?? ''))),
+                $rows
+            );
+            $integrity = (!empty($values) && count(array_unique($values)) === 1 && $values[0] === 'ok')
+                ? 'ok'
+                : 'FAILED';
+
+            if ($integrity !== 'ok') {
+                $detail = implode('; ', array_slice($values, 0, 5));
+                $this->error("❌ SQLite integrity_check FAILED: {$detail}");
+                $this->line("🔍 SQLite verification: integrity_check=FAILED, boot probe=skipped");
+                return false;
+            }
+
+            $this->info('✅ SQLite integrity_check: ok');
+
+            $probe = 'skipped';
+            if ($this->option('boot-probe') || config('backup-complete-restore.restoration.sqlite_boot_probe', false)) {
+                try {
+                    DB::purge($connection);
+                    DB::connection($connection)->select('SELECT 1');
+                    $configuredCommand = config('backup-complete-restore.restoration.boot_probe_command');
+                    if (is_string($configuredCommand) && $configuredCommand !== '') {
+                        Artisan::call($configuredCommand);
+                    }
+                    $probe = 'passed';
+                    $this->info('✅ Boot probe: passed');
+                } catch (Exception $e) {
+                    $probe = 'FAILED';
+                    $this->error('❌ Boot probe FAILED: ' . $e->getMessage());
+                    $this->line("🔍 SQLite verification: integrity_check=ok, boot probe=FAILED");
+                    return false;
+                }
+            }
+
+            $this->line("🔍 SQLite verification: integrity_check=ok, boot probe={$probe}");
+
+            return true;
+        } catch (Exception $e) {
+            $this->error('❌ SQLite verification failed: ' . $e->getMessage());
+            return false;
         }
     }
 
@@ -347,7 +584,11 @@ class BackupCompleteRestoreCommand extends Command
             return false;
         } finally {
             if ($tempDir && File::exists($tempDir) && config('backup-complete-restore.cleanup_temp_files', true)) {
-                $this->cleanup($tempDir);
+                if ($this->option('keep-temp')) {
+                    $this->line("🧊 Kept temp dir for debugging: {$tempDir}");
+                } else {
+                    $this->cleanup($tempDir);
+                }
             }
         }
     }
@@ -647,7 +888,9 @@ class BackupCompleteRestoreCommand extends Command
                             $this->warn("⚠️  {$healthCheckClass} failed");
                         }
                     }
-                } catch (Exception $e) {
+                } catch (\Throwable $e) {
+                    // A broken health check must never fail an otherwise good restore
+                    // (e.g. upstream checks whose run() signature requires arguments).
                     $this->warn("⚠️  Health check {$healthCheckClass} error: " . $e->getMessage());
                 }
             }
@@ -661,6 +904,11 @@ class BackupCompleteRestoreCommand extends Command
 
         $disks = ['local', 'google'];
         $backupName = config('backup.backup.name');
+
+        if (!$backupName) {
+            $this->warn('⚠️  Spatie backup name is not configured (backup.backup.name).');
+            return 0;
+        }
 
         foreach ($disks as $disk) {
             $this->info("💾 Disk: {$disk}");

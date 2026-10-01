@@ -132,6 +132,25 @@ return [
          * Whether to automatically clear application and config caches after restore.
          */
         'clear_caches' => false,
+
+        /*
+         * Whether to run PRAGMA integrity_check after a sqlite restore.
+         * Disable (or pass --skip-verification) for exotic setups.
+         */
+        'verify_sqlite' => true,
+
+        /*
+         * Whether to run the optional boot probe (fresh reconnect + trivial
+         * query, plus `boot_probe_command` when set) after sqlite verification.
+         * Also enable per-run with --boot-probe.
+         */
+        'sqlite_boot_probe' => false,
+
+        /*
+         * Optional trivial artisan command to run as part of the boot probe
+         * (e.g. 'about'). Null runs only the database reconnect probe.
+         */
+        'boot_probe_command' => null,
     ],
 
     /*

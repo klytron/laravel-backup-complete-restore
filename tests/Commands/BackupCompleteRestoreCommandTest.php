@@ -3,37 +3,38 @@
 namespace Klytron\LaravelBackupCompleteRestore\Tests\Commands;
 
 use Klytron\LaravelBackupCompleteRestore\Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 use Klytron\LaravelBackupCompleteRestore\Commands\BackupCompleteRestoreCommand;
 use ReflectionClass;
 
 class BackupCompleteRestoreCommandTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function it_can_list_available_commands()
     {
         $this->artisan('list')
-            ->expectsOutput('backup:restore-complete')
+            ->expectsOutputToContain('backup:restore-complete')
             ->assertExitCode(0);
     }
 
-    /** @test */
+    #[Test]
     public function it_shows_help_information()
     {
         $this->artisan('backup:restore-complete --help')
-            ->expectsOutput('Complete restore of database AND files from Spatie Laravel Backup')
+            ->expectsOutputToContain('Complete restore of database AND files from Spatie Laravel Backup')
             ->assertExitCode(0);
     }
 
-    /** @test */
+    #[Test]
     public function it_can_list_backups_when_none_exist()
     {
         $this->artisan('backup:restore-complete --list')
-            ->expectsOutput('📋 Available Backups')
-            ->expectsOutput('No backups found')
+            ->expectsOutputToContain('📋 Available Backups')
+            ->expectsOutputToContain('No backups found')
             ->assertExitCode(0);
     }
 
-    /** @test */
+    #[Test]
     public function it_requires_confirmation_without_force_flag()
     {
         $this->artisan('backup:restore-complete')
@@ -42,7 +43,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
-    /** @test */
+    #[Test]
     public function it_can_run_with_force_flag()
     {
         $this->artisan('backup:restore-complete --force')
@@ -50,7 +51,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
-    /** @test */
+    #[Test]
     public function it_validates_configuration_exists()
     {
         $this->assertTrue(config()->has('backup-complete-restore'));
@@ -58,7 +59,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertIsString(config('backup-complete-restore.container_base_path'));
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_sql_with_semicolons_in_string_literals()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -72,7 +73,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString("'value;with;semicolons'", $statements[0]);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_sql_with_escaped_quotes()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -87,7 +88,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString("'it''s a test'", $statements[0]);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_sql_with_backslash_escaped_quotes()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -102,7 +103,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString("'it\\'s a test'", $statements[0]);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_sql_with_double_quotes_in_strings()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -116,7 +117,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString('"value;with;semicolons"', $statements[0]);
     }
 
-    /** @test */
+    #[Test]
     public function it_parses_multiple_sql_statements()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -132,7 +133,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString('SELECT *', $statements[2]);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_sql_comments()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -145,7 +146,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertCount(2, $statements);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_complex_real_world_sql_with_special_chars()
     {
         $command = new BackupCompleteRestoreCommand();
@@ -164,7 +165,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $this->assertStringContainsString("'Another; test'", $statements[1]);
     }
 
-    /** @test */
+    #[Test]
     public function it_drops_all_tables_on_sqlite()
     {
         \Illuminate\Support\Facades\DB::statement('CREATE TABLE test_users (id INTEGER PRIMARY KEY, name TEXT)');
@@ -173,7 +174,7 @@ class BackupCompleteRestoreCommandTest extends TestCase
         $command = new BackupCompleteRestoreCommand();
         $command->setLaravel($this->app);
 
-        $input = new \Symfony\Component\Console\Input\ArrayInput([]);
+        $input = new \Symfony\Component\Console\Input\ArrayInput([], (new BackupCompleteRestoreCommand())->getDefinition());
         $output = new \Symfony\Component\Console\Output\BufferedOutput();
         $ref = new ReflectionClass($command);
         $inputProp = $ref->getProperty('input');

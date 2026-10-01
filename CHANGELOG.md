@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`--dry-run` restore previews**: `backup:restore-complete --dry-run` downloads the archive, reports its date, entry count, compressed/uncompressed size, detected database dumps, and the database/files restore plan (targets included) — restoring nothing.
+- **Streamed extraction progress**: archive entries are now extracted one at a time behind a progress bar with a files/bytes summary (`📊 Extracted N/M files (...)`), so multi-GB restores no longer look hung.
+- **`--keep-temp` flag**: skips temp-dir cleanup on success and failure, printing the kept path for debugging (pairs with `cleanup_temp_files` config).
+- **Restoration temp janitor**: new `klytron:backup:cleanup:restoration` command purges stale `temp-restore-*` / `temp-check-*` directories, with `--older-than=` (minutes, default 60), `--dry-run`, and `--force`.
+- **SQLite post-restore verification**: `PRAGMA integrity_check` runs automatically after sqlite restores (config `restoration.verify_sqlite`, skip with `--skip-verification`), plus an opt-in boot probe (fresh reconnect + trivial query, optional `restoration.boot_probe_command`; config `restoration.sqlite_boot_probe` or `--boot-probe`) and a `🔍 SQLite verification: ...` summary line in restore output.
 - **Multi-Driver Database Support**: Driver-aware `dropAllTables()` using `Schema::connection()->dropAllTables()` with robust fallbacks for SQLite (`PRAGMA foreign_keys = OFF`), PostgreSQL (`CASCADE`), and MySQL/MariaDB.
 - **Multi-Driver Health Checks**: `checkDatabaseTables()` now natively supports SQLite, PostgreSQL, SQL Server, and MySQL via `Schema::getTables()` and driver catalog queries.
 - **Resource Limit Controls**: Configured `restoration.max_execution_time` and `restoration.memory_limit` are now applied during restoration.
